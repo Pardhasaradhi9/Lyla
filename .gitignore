@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+*.swp
+
+# AI Agent Artifacts
+.gemini/
+**/.system_generated/
+
+# React Native & Expo
+app/node_modules/
+app/.expo/
+app/ios/Pods/
+app/ios/build/
+app/android/.gradle/
+app/android/build/
+app/android/app/build/
+
+# Local models (downloaded via app)
+app/models/
+*.gguf
+*.bin

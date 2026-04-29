@@ -1,0 +1,13 @@
+# Lyla Project Context Rules
+
+You are working on the Lyla project (a private, on-device AI assistant). 
+BEFORE starting any new task, making architectural decisions, or debugging, you MUST read the relevant context files located in `/Users/pardhasaradhichukka/Desktop/Lyla/context/`.
+
+1. **New Session / General Progress:** Always read `context/PROGRESS.md` first to know where we left off.
+2. **Implementation & Code:** Read `context/IMPLEMENTATION_PLAN.md` and `context/TECH_STACK.md` before writing code.
+3. **Decision Making:** Read `context/DECISIONS.md` before suggesting changes to the stack or architecture.
+4. **Debugging:** Read `context/ERRORS_AND_SOLUTIONS.md` before solving bugs.
+5. **Updates:** As you complete tasks, you MUST update these context files (especially `PROGRESS.md` and `ERRORS_AND_SOLUTIONS.md`) to keep the next agent informed.
+
+## Automatic Skill Detection
+6. **Agent Routing:** The project has an `.agent/` directory installed via `antigravity-kit`. You MUST automatically analyze the user's request (e.g., UI, backend, debugging), read the appropriate specialist skill from the `.agent/` folder, and apply it SILENTLY. You do not need the user to explicitly call the agent. When you use a skill, start your response with: `🤖 Applying knowledge of @[agent-name]...`
