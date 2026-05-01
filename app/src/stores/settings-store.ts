@@ -7,7 +7,6 @@ import { create } from 'zustand';
 interface SettingsState {
   // ── Model ───────────────────────────────────────────────────────
   selectedModel: 'primary' | 'speed';
-  enableThinking: boolean;
 
   // ── Voice ───────────────────────────────────────────────────────
   autoPlayTTS: boolean;
@@ -20,7 +19,6 @@ interface SettingsState {
 
   // ── Actions ─────────────────────────────────────────────────────
   setSelectedModel: (model: 'primary' | 'speed') => void;
-  setEnableThinking: (enable: boolean) => void;
   setAutoPlayTTS: (autoPlay: boolean) => void;
   setTTSRate: (rate: number) => void;
   setTTSPitch: (pitch: number) => void;
@@ -30,7 +28,6 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   selectedModel: 'primary',
-  enableThinking: false,
   autoPlayTTS: false,
   ttsRate: 0.9,
   ttsPitch: 1.0,
@@ -38,7 +35,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   memoryEnabled: true,
 
   setSelectedModel: (model) => set({ selectedModel: model }),
-  setEnableThinking: (enable) => set({ enableThinking: enable }),
   setAutoPlayTTS: (autoPlay) => set({ autoPlayTTS: autoPlay }),
   setTTSRate: (rate) => set({ ttsRate: rate }),
   setTTSPitch: (pitch) => set({ ttsPitch: pitch }),

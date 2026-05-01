@@ -1,23 +1,33 @@
 /**
- * Settings Screen (Placeholder)
- *
- * Will contain: model selection, voice settings, memory viewer,
- * about info, and privacy controls.
+ * Settings Screen
  */
-import { View, Text, StyleSheet, SafeAreaView, Pressable, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, radius } from '@/theme/spacing';
-import { APP } from '@/utils/constants';
+import { APP, MODELS } from '@/utils/constants';
+import { useAppStore } from '@/stores/app-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import { memoryEngine } from '@/engines/memory';
+import { memoryRepository } from '@/db/memory-repository';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const modelStatus = useAppStore((s) => s.modelStatus);
+  const { autoPlayTTS, ttsRate, memoryEnabled } = useSettingsStore();
+  const [memoryCount, setMemoryCount] = useState(0);
+
+  useEffect(() => {
+    memoryEngine.getAllMemories()
+      .then(memories => setMemoryCount(memories.length))
+      .catch(() => {});
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
         <Pressable
@@ -31,60 +41,79 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {/* ── Model Section ──────────────────────────────────────── */}
         <SettingsSection title="AI Model">
           <SettingsRow
             icon="hardware-chip-outline"
             label="Active Model"
-            value="Not loaded"
+            value={modelStatus === 'ready' ? MODELS.PRIMARY_LLM.name : modelStatus}
           />
           <SettingsRow
-            icon="swap-horizontal-outline"
-            label="Switch Model"
-            value="Qwen3 1.7B"
+            icon="resize-outline"
+            label="Model Size"
+            value={`${(MODELS.PRIMARY_LLM.sizeBytes / 1_000_000).toFixed(0)} MB`}
           />
           <SettingsRow
             icon="bulb-outline"
-            label="Thinking Mode"
-            value="Off"
+            label="Status"
+            value={modelStatus === 'ready' ? '🧠 Ready' : '⏳ ' + modelStatus}
           />
         </SettingsSection>
 
-        {/* ── Voice Section ──────────────────────────────────────── */}
         <SettingsSection title="Voice">
           <SettingsRow
             icon="volume-high-outline"
             label="Auto-play responses"
-            value="Off"
+            value={autoPlayTTS ? 'On' : 'Off'}
           />
           <SettingsRow
             icon="speedometer-outline"
             label="Speech rate"
-            value="0.9x"
+            value={`${ttsRate}x`}
           />
         </SettingsSection>
 
-        {/* ── Memory Section ─────────────────────────────────────── */}
         <SettingsSection title="Memory">
           <SettingsRow
-            icon="brain-outline"
+            icon="sparkles-outline"
             label="Memory enabled"
-            value="On"
+            value={memoryEnabled ? 'On' : 'Off'}
           />
           <SettingsRow
             icon="list-outline"
-            label="View memories"
-            value="0 facts"
+            label="Saved memories"
+            value={`${memoryCount} fact${memoryCount !== 1 ? 's' : ''}`}
           />
-          <SettingsRow
-            icon="trash-outline"
-            label="Clear all memories"
-            value=""
-            destructive
-          />
+          {memoryCount > 0 && (
+            <Pressable
+              style={styles.clearButton}
+              onPress={() => {
+                Alert.alert(
+                  'Clear All Memories',
+                  'This will permanently delete all saved memories. This cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Clear All',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await memoryRepository.deleteAllMemories();
+                          setMemoryCount(0);
+                        } catch (e) {
+                          console.warn('[Settings] Clear memories failed:', e);
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="trash-outline" size={20} color={colors.status.error} />
+              <Text style={styles.clearButtonText}>Clear All Memories</Text>
+            </Pressable>
+          )}
         </SettingsSection>
 
-        {/* ── About ──────────────────────────────────────────────── */}
         <SettingsSection title="About">
           <SettingsRow
             icon="shield-checkmark-outline"
@@ -101,8 +130,6 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
-
-// ── Reusable Components ─────────────────────────────────────────
 
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -125,7 +152,7 @@ function SettingsRow({
   destructive?: boolean;
 }) {
   return (
-    <Pressable style={styles.row} accessibilityRole="button" accessibilityLabel={label}>
+    <View style={styles.row}>
       <Ionicons
         name={icon as any}
         size={20}
@@ -133,8 +160,7 @@ function SettingsRow({
       />
       <Text style={[styles.rowLabel, destructive && styles.rowLabelDestructive]}>{label}</Text>
       <Text style={styles.rowValue}>{value}</Text>
-      <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
-    </Pressable>
+    </View>
   );
 }
 
@@ -171,7 +197,6 @@ const styles = StyleSheet.create({
     gap: spacing['2xl'],
     paddingBottom: spacing['4xl'],
   },
-  // ── Section ─────────────────────────────────────────────────
   section: {
     gap: spacing.sm,
   },
@@ -188,7 +213,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border.subtle,
     overflow: 'hidden',
   },
-  // ── Row ─────────────────────────────────────────────────────
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,5 +234,18 @@ const styles = StyleSheet.create({
   rowValue: {
     ...typography.bodySmall,
     color: colors.text.tertiary,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    minHeight: 48,
+    gap: spacing.md,
+  },
+  clearButtonText: {
+    ...typography.bodyMedium,
+    color: colors.status.error,
+    flex: 1,
   },
 });

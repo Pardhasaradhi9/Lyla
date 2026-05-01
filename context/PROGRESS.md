@@ -1,12 +1,13 @@
 # Progress Tracker — Lyla
 
-> **STATUS: 🟢 PHASE 1 COMPLETE**
-> Last Updated: 2026-04-29T15:45:00+05:30
+> **STATUS: 🟢 PHASE 3 COMPLETE — MEMORY ENGINE BUILT**
+> Last Updated: 2026-04-30T14:30:00+05:30
 
 ---
 
 ## Current Phase
-**Phase 2: Core Chat Engine** — Implement llama.rn integration, streaming chat, and basic UI.
+**Phase 3: Memory Engine** ✅ — Vector database, fact extraction, and memory retrieval.
+**Phase 4: Online Search** — DuckDuckGo integration, online/offline router.
 
 ## What Has Been Completed
 - [x] User research (5 research documents analyzed — grk, zlm, gpt, pep, qwn)
@@ -33,10 +34,28 @@
   - [x] Network utility (online/offline detection via NetInfo)
   - [x] TypeScript compiles with zero errors
   - [x] Metro bundler starts successfully
+- [x] **Phase 2.5: Orchestration Layer** ✅
+  - [x] Intent classifier (pattern-based routing for 9 intent types)
+  - [x] Identity handler (hardcoded zero-hallucination responses)
+  - [x] Factual guard (intercepts real-time questions: weather, prices, news)
+  - [x] Response formatter (strips markdown, extracts thinking traces)
+  - [x] Tool definitions (LFM2.5 native tool-calling schemas — Phase 3/4 ready)
+  - [x] Main orchestrator (ties intent → handler → LLM pipeline)
+  - [x] System prompt hardened (shortened for 1.2B instruction-following)
+  - [x] TypeScript compiles with zero errors
+  - [x] Research synthesis complete (TurboQuant, TurboVec, Liquid AI tool-use)
+- [x] **Phase 3: Memory Engine** ✅
+  - [x] SQLite database initialization (expo-sqlite)
+  - [x] Chat Repository for CRUD operations
+  - [x] UI wired up (History screen, New Chat button, persistence logic)
+  - [x] Verified model supports native tool calling!
+  - [x] Vector database initialized with sqlite-vec
+  - [x] Snowflake Arctic Embed (35MB) background downloading
+  - [x] Embedding engine built via llama.rn
+  - [x] Tool-call extraction (JSON/Python kwarg parsing)
+  - [x] Orchestrator auto-injection of retrieved memories
 
 ## What Is Next
-- [ ] **Phase 2: Core Chat Engine** — llama.rn integration, model loading, streaming
-- [ ] **Phase 3: Memory Engine** — Fact extraction, sqlite-vec, memory retrieval
 - [ ] **Phase 4: Online Search** — DuckDuckGo integration, online/offline router
 - [ ] **Phase 5: Voice I/O** — whisper.rn STT + expo-speech TTS
 - [ ] **Phase 6: UI/UX Polish** — Premium design, animations, onboarding
@@ -57,12 +76,19 @@
 └── app/                        # React Native project root ✅
     ├── app/                    # Expo Router screens
     │   ├── _layout.tsx         # Root layout (dark theme, navigation)
-    │   ├── index.tsx           # Home / Chat screen (placeholder)
+    │   ├── index.tsx           # Home / Chat screen (with orchestrator)
     │   ├── settings.tsx        # Settings screen (placeholder)
     │   └── history.tsx         # Chat history (placeholder)
     ├── src/
+    │   ├── orchestrator/       # 🆕 Phase 2.5 — Message routing layer
+    │   │   ├── index.ts        # Main orchestrator (routes messages)
+    │   │   ├── intent-classifier.ts  # Pattern-based intent detection
+    │   │   ├── identity-handler.ts   # Hardcoded identity responses
+    │   │   ├── factual-guard.ts      # Real-time question deflection
+    │   │   ├── response-formatter.ts # Strips markdown/tokens from output
+    │   │   └── tool-definitions.ts   # LFM2.5 tool-calling schemas
     │   ├── engines/            # AI engine wrappers
-    │   │   ├── llm.ts          # LLM engine (placeholder)
+    │   │   ├── llm.ts          # LLM engine (with system prompt)
     │   │   ├── memory.ts       # Memory engine (placeholder)
     │   │   ├── embeddings.ts   # Embedding engine (placeholder)
     │   │   ├── search.ts       # Search engine (placeholder)
@@ -77,11 +103,12 @@
     │   │   ├── chat-store.ts   # Chat state
     │   │   └── settings-store.ts
     │   ├── prompts/
-    │   │   ├── system.ts       # System prompt builder
+    │   │   ├── system.ts       # System prompt builder (dynamic)
     │   │   ├── memory-extract.ts
     │   │   └── search-query.ts
     │   ├── utils/
     │   │   ├── constants.ts    # App constants
+    │   │   ├── system-prompt.ts # 🔄 Hardened system prompt (shorter)
     │   │   ├── model-manager.ts # Model download/cache
     │   │   └── network.ts      # Online/offline detection
     │   └── theme/

@@ -118,3 +118,31 @@
 - **Date:** 2026-04-21
 - **Decision:** Build open source. Distribute Android APKs via GitHub Releases first. App Store/Play Store later.
 - **Why:** Zero cost to start. Build community trust. iOS requires ₹9,603/yr developer account — defer until demand exists.
+
+## Decision 011: Orchestration Layer → TypeScript Intent Router Before LLM
+- **Date:** 2026-04-30
+- **Decision:** Add a deterministic TypeScript orchestration layer between the user and the LLM. Identity questions, greetings, and real-time factual queries are intercepted and answered WITHOUT the model.
+- **Why:**
+  - 1.2B models hallucinate severely on identity questions ("who are you", "who made you")
+  - 1.2B models fabricate URLs, statistics, and real-time data
+  - Pattern matching is 100% reliable for these categories — zero hallucination risk
+  - Research confirmed: scaffolding (routing, guardrails) is the force multiplier for sub-2B models, not raw model intelligence
+  - LFM2.5-1.2B was trained with native tool-calling tokens — we can leverage this for Phase 3/4
+- **Architecture:**
+  - `intent-classifier.ts` — Regex-based, 9 intent types
+  - `identity-handler.ts` — Hardcoded responses (randomized for variety)
+  - `factual-guard.ts` — Detects weather/prices/news → graceful deflection
+  - `response-formatter.ts` — Strips markdown/tokens from model output
+  - `tool-definitions.ts` — LFM2.5 tool-calling schemas (Phase 3/4)
+  - `index.ts` — Main orchestrator tying the pipeline together
+- **Rejected Alternatives:**
+  - Pure system prompt approach — Failed. Model ignores instructions at 1.2B scale.
+  - Separate classifier model (e.g., 270M router) — Overhead not justified yet. TypeScript regex is faster and deterministic.
+- **Impact:** This is the "brain" that makes Lyla's 1.2B model actually useful. The model only handles what it's good at: creative, open-ended conversation.
+
+## Decision 012: System Prompt → Shortened for 1.2B Instruction Following
+- **Date:** 2026-04-30
+- **Decision:** Replaced the long system prompt with a 4-line, high-urgency instruction set.
+- **Why:** Research confirmed that 1.2B models lose coherence with long system prompts. The orchestrator now handles identity/factual routing, so the model only needs minimal behavioral rules (be concise, don't guess facts, talk like a friend).
+- **Previous prompt:** 5 critical rules, PrepMyRez mention, identity instructions — 800+ chars
+- **New prompt:** 4 rules, 250 chars. Identity handled by orchestrator.

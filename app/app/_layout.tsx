@@ -7,21 +7,34 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { LogBox } from 'react-native';
 import * as SystemUI from 'expo-system-ui';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { colors } from '@/theme/colors';
 import { useAppStore } from '@/stores/app-store';
 import { onNetworkChange, isOnline } from '@/utils/network';
+import { initDatabase } from '@/db/database';
 
 // Set the root background to match our dark theme
 SystemUI.setBackgroundColorAsync(colors.background.primary);
+
+LogBox.ignoreLogs([
+  'Result accumulator timeout',
+  'Attempted to update accumulator',
+  'VirtualizedList',
+]);
 
 export default function RootLayout() {
   const setIsOnline = useAppStore((s) => s.setIsOnline);
   const setIsAppReady = useAppStore((s) => s.setIsAppReady);
 
   useEffect(() => {
+    // Initialize database (creates tables if they don't exist)
+    initDatabase()
+      .then(() => console.log('[App] Database ready'))
+      .catch((e) => console.error('[App] Database init failed:', e));
+
     // Check initial network state
     isOnline().then(setIsOnline);
 

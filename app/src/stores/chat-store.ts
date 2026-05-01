@@ -18,13 +18,11 @@ interface ChatState {
   messages: Message[];
   conversationId: string | null;
   isGenerating: boolean;
-  isThinking: boolean;
 
   // ── Actions ─────────────────────────────────────────────────────
   addMessage: (message: Message) => void;
-  updateLastMessage: (content: string) => void;
+  updateLastMessage: (content: string, isComplete?: boolean) => void;
   setIsGenerating: (generating: boolean) => void;
-  setIsThinking: (thinking: boolean) => void;
   clearChat: () => void;
   loadConversation: (id: string, messages: Message[]) => void;
   setConversationId: (id: string) => void;
@@ -34,12 +32,11 @@ export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   conversationId: null,
   isGenerating: false,
-  isThinking: false,
 
   addMessage: (message) =>
     set((state) => ({ messages: [...state.messages, message] })),
 
-  updateLastMessage: (content) =>
+  updateLastMessage: (content, isComplete = false) =>
     set((state) => {
       const messages = [...state.messages];
       const lastIndex = messages.length - 1;
@@ -47,20 +44,19 @@ export const useChatStore = create<ChatState>((set) => ({
         messages[lastIndex] = {
           ...messages[lastIndex],
           content,
-          isStreaming: true,
+          isStreaming: !isComplete,
         };
       }
       return { messages };
     }),
 
   setIsGenerating: (generating) => set({ isGenerating: generating }),
-  setIsThinking: (thinking) => set({ isThinking: thinking }),
 
   clearChat: () =>
-    set({ messages: [], conversationId: null, isGenerating: false, isThinking: false }),
+    set({ messages: [], conversationId: null, isGenerating: false }),
 
   loadConversation: (id, messages) =>
-    set({ conversationId: id, messages, isGenerating: false, isThinking: false }),
+    set({ conversationId: id, messages, isGenerating: false }),
 
   setConversationId: (id) => set({ conversationId: id }),
 }));

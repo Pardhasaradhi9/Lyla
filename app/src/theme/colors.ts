@@ -33,11 +33,10 @@ export const colors = {
 
   // ── Chat Bubbles ────────────────────────────────────────────────
   chat: {
-    user: '#7C3AED',        // User message bubble
+    user: '#7C3AED',
     userText: '#FFFFFF',
-    assistant: '#1C1932',   // Assistant message bubble
+    assistant: '#1C1932',
     assistantText: '#F1F0F5',
-    thinking: '#2A2545',    // Thinking indicator background
   },
 
   // ── Status / Semantic ───────────────────────────────────────────
