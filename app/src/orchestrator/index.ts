@@ -6,6 +6,7 @@ import { formatModelResponse, formatStreamingToken } from './response-formatter'
 import { executeTool, registerBuiltinTools } from './tool-registry';
 import { buildSystemState, formatSystemStateForPrompt } from './system-state';
 import { extractFacts } from './fact-extractor';
+import { validateRouterDecision, type RouterDecision } from './router-guardrails';
 import { useAppStore } from '@/stores/app-store';
 
 export interface OrchestratorResult {
@@ -21,6 +22,11 @@ export interface OrchestratorConfig {
     onToken: (token: string) => void,
   ) => Promise<string>;
   isModelReady: () => boolean;
+  isRouterReady: () => boolean;
+  routerClassify: (message: string) => Promise<RouterDecision>;
+  swapToBrain: () => Promise<void>;
+  swapToRouter: () => Promise<void>;
+  llmExtractFacts: (userMsg: string, assistantMsg: string) => Promise<Array<{ fact: string; category: string; entity: string | null }>>;
 }
 
 function sysResponse(response: string, intent: Intent, t0: number): OrchestratorResult {
@@ -206,6 +212,33 @@ export function createOrchestrator(config: OrchestratorConfig) {
         return { response: getFactualGuardResponse(userMessage, online), handledBy: 'factual_guard', intent, wasStreamed: false };
       }
 
+      // ── 4b. ROUTE: 350M Router (classifier-only, guarded) ──────
+
+      if (intent === 'chat' && config.isRouterReady()) {
+        try {
+          const rawDecision = await config.routerClassify(userMessage);
+          const decision = validateRouterDecision(rawDecision, userMessage);
+          console.log(`[Orchestrator] Router: raw=${rawDecision.action} guarded=${decision.action}`);
+
+          if (decision.action === 'direct' && decision.answer) {
+            autoExtractFacts(userMessage, decision.answer);
+            return { response: decision.answer, handledBy: 'system', intent, wasStreamed: false };
+          }
+
+          if (decision.action === 'tool' && decision.tool) {
+            try {
+              const result = await executeTool(decision.tool, decision.params ?? {});
+              autoExtractFacts(userMessage, result.data);
+              return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+            } catch {
+              // Tool execution failed, fall through to Brain
+            }
+          }
+        } catch (e) {
+          console.warn('[Orchestrator] Router failed, falling back to Brain:', e);
+        }
+      }
+
       // ── 5. REASON: Complex query → Brain with system state ─────
 
       if (!config.isModelReady()) {
@@ -261,7 +294,7 @@ export function createOrchestrator(config: OrchestratorConfig) {
       const { response } = formatModelResponse(rawResponse);
 
       // ── 6. LEARN: Auto-extract facts from the conversation ─────
-      autoExtractFacts(userMessage, response);
+      autoExtractFacts(userMessage, response, config.llmExtractFacts);
 
       const t5 = Date.now();
       console.log(`[Orchestrator] Timing: classify=${t1 - t0}ms mem=${t3 - t2}ms state=${t4 - t3}ms llm+format=${t5 - t4}ms total=${t5 - t0}ms intent=${intent}`);
@@ -271,9 +304,24 @@ export function createOrchestrator(config: OrchestratorConfig) {
   };
 }
 
-function autoExtractFacts(userMessage: string, assistantResponse: string): void {
+type FactExtractorFn = (userMsg: string, assistantMsg: string) => Promise<Array<{ fact: string; category: string; entity: string | null }>>;
+
+function autoExtractFacts(userMessage: string, assistantResponse: string, llmExtractor?: FactExtractorFn): void {
   try {
     const facts = extractFacts(userMessage);
+    if (facts.length === 0 && llmExtractor) {
+      llmExtractor(userMessage, assistantResponse)
+        .then((llmFacts) => {
+          if (llmFacts.length === 0) return;
+          import('@/engines/memory').then(({ memoryEngine }) => {
+            for (const fact of llmFacts.slice(0, 3)) {
+              memoryEngine.addMemory(fact.fact, fact.entity ?? undefined, fact.category).catch(() => {});
+            }
+          }).catch(() => {});
+        })
+        .catch(() => {});
+      return;
+    }
     if (facts.length === 0) return;
 
     import('@/engines/memory').then(({ memoryEngine }) => {

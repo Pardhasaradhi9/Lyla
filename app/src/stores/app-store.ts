@@ -11,6 +11,9 @@ interface AppState {
   modelStatus: ModelStatus;
   modelDownloadProgress: number; // 0-1
   activeModel: string | null;
+  routerStatus: ModelStatus;
+  brainStatus: ModelStatus;
+  isSwapping: boolean;
 
   // ── Network ─────────────────────────────────────────────────────
   isOnline: boolean;
@@ -23,6 +26,9 @@ interface AppState {
   setModelStatus: (status: ModelStatus) => void;
   setModelDownloadProgress: (progress: number) => void;
   setActiveModel: (model: string | null) => void;
+  setRouterStatus: (status: ModelStatus) => void;
+  setBrainStatus: (status: ModelStatus) => void;
+  setIsSwapping: (swapping: boolean) => void;
   setIsOnline: (online: boolean) => void;
   setIsAppReady: (ready: boolean) => void;
   setIsOnboarded: (onboarded: boolean) => void;
@@ -33,6 +39,9 @@ export const useAppStore = create<AppState>((set) => ({
   modelStatus: 'not_downloaded',
   modelDownloadProgress: 0,
   activeModel: null,
+  routerStatus: 'not_downloaded',
+  brainStatus: 'not_downloaded',
+  isSwapping: false,
   isOnline: false,
   isAppReady: false,
   isOnboarded: false,
@@ -41,6 +50,9 @@ export const useAppStore = create<AppState>((set) => ({
   setModelStatus: (status) => set({ modelStatus: status }),
   setModelDownloadProgress: (progress) => set({ modelDownloadProgress: progress }),
   setActiveModel: (model) => set({ activeModel: model }),
+  setRouterStatus: (status) => set({ routerStatus: status }),
+  setBrainStatus: (status) => set({ brainStatus: status }),
+  setIsSwapping: (swapping) => set({ isSwapping: swapping }),
   setIsOnline: (online) => set({ isOnline: online }),
   setIsAppReady: (ready) => set({ isAppReady: ready }),
   setIsOnboarded: (onboarded) => set({ isOnboarded: onboarded }),

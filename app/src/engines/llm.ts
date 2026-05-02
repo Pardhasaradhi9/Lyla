@@ -15,7 +15,7 @@ export interface LLMEngine {
   isLoaded: boolean;
   context: LlamaContext | null;
   init(modelPath: string): Promise<void>;
-  complete(messages: Array<{ role: string; content: string }>, onToken: (token: string) => void): Promise<string>;
+  complete(messages: Array<{ role: string; content: string }>, onToken: (token: string) => void, systemPrompt?: string): Promise<string>;
   release(): Promise<void>;
 }
 
@@ -49,17 +49,20 @@ export const llmEngine: LLMEngine = {
   async complete(
     messages: Array<{ role: string; content: string }>,
     onToken: (token: string) => void,
+    systemPrompt?: string,
   ): Promise<string> {
     if (!this.context) {
       throw new Error('LLM Context is not initialized');
     }
+
+    const promptSys = systemPrompt ?? SYSTEM_PROMPT;
 
     // Convert OpenAI format to ChatML
     let prompt = '';
     
     // Inject system prompt if not present
     if (messages.length === 0 || messages[0].role !== 'system') {
-      prompt += `<|im_start|>system\n${SYSTEM_PROMPT}<|im_end|>\n`;
+      prompt += `<|im_start|>system\n${promptSys}<|im_end|>\n`;
     }
 
     for (const msg of messages) {

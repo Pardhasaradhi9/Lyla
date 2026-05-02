@@ -10,7 +10,9 @@ import { useAppStore } from '@/stores/app-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useChatStore, Message } from '@/stores/chat-store';
 import { llmEngine } from '@/engines/llm';
+import { routerEngine } from '@/engines/router';
 import { embeddingEngine } from '@/engines/embeddings';
+import { swapToBrain, swapToRouter } from '@/engines/model-swapper';
 import { downloadModel, modelExists, getModelPath } from '@/utils/model-manager';
 import { MODELS } from '@/utils/constants';
 import Markdown from 'react-native-markdown-display';
@@ -26,6 +28,12 @@ export default function HomeScreen() {
   const isOnline = useAppStore((s) => s.isOnline);
   const modelStatus = useAppStore((s) => s.modelStatus);
   const setModelStatus = useAppStore((s) => s.setModelStatus);
+  const routerStatus = useAppStore((s) => s.routerStatus);
+  const setRouterStatus = useAppStore((s) => s.setRouterStatus);
+  const brainStatus = useAppStore((s) => s.brainStatus);
+  const setBrainStatus = useAppStore((s) => s.setBrainStatus);
+  const isSwapping = useAppStore((s) => s.isSwapping);
+  const setIsSwapping = useAppStore((s) => s.setIsSwapping);
   const modelDownloadProgress = useAppStore((s) => s.modelDownloadProgress);
   const setModelDownloadProgress = useAppStore((s) => s.setModelDownloadProgress);
 
@@ -42,11 +50,25 @@ export default function HomeScreen() {
   const flatListRef = useRef<FlatList>(null);
   const orchestratorRef = useRef<Orchestrator | null>(null);
 
-  // Create orchestrator (connects to LLM engine)
+  // Create orchestrator (connects to LLM engine + Router)
   useEffect(() => {
     orchestratorRef.current = createOrchestrator({
       streamCompletion: (messages, onToken) => llmEngine.complete(messages, onToken),
       isModelReady: () => llmEngine.isLoaded,
+      isRouterReady: () => routerEngine.isLoaded,
+      routerClassify: (msg) => routerEngine.classify(msg),
+      swapToBrain: async () => {
+        setIsSwapping(true);
+        try { await swapToBrain(); } finally { setIsSwapping(false); }
+      },
+      swapToRouter: async () => {
+        setIsSwapping(true);
+        try { await swapToRouter(); } finally { setIsSwapping(false); }
+      },
+      llmExtractFacts: async (userMsg, assistantMsg) => {
+        if (!routerEngine.isLoaded) return [];
+        return routerEngine.extractFacts(userMsg, assistantMsg);
+      },
     });
   }, []);
 
@@ -56,18 +78,36 @@ export default function HomeScreen() {
   useEffect(() => {
     const initModels = async () => {
       try {
-        // 1. Init Primary LLM
-        const llmFileName = MODELS.PRIMARY_LLM.fileName;
-        if (await modelExists(llmFileName)) {
-          setModelStatus('loading');
-          const path = await getModelPath(llmFileName);
-          await llmEngine.init(path);
-          setModelStatus('ready');
+        // 1. Init Router (350M) — loaded first, always ready
+        const routerFileName = MODELS.SPEED_LLM.fileName;
+        if (await modelExists(routerFileName)) {
+          setRouterStatus('loading');
+          const path = await getModelPath(routerFileName);
+          await routerEngine.init(path);
+          setRouterStatus('ready');
         } else {
-          setModelStatus('not_downloaded');
+          setRouterStatus('not_downloaded');
         }
 
-        // 2. Init Embedding Engine (Background)
+        // 2. Init Brain (1.2B) — loaded on demand, check if already downloaded
+        const brainFileName = MODELS.PRIMARY_LLM.fileName;
+        if (await modelExists(brainFileName)) {
+          setBrainStatus('loading');
+          const path = await getModelPath(brainFileName);
+          await llmEngine.init(path);
+          setBrainStatus('ready');
+          setModelStatus('ready');
+        } else {
+          setBrainStatus('not_downloaded');
+          // If no brain but router exists, still mark ready (Router mode)
+          if (routerEngine.isLoaded) {
+            setModelStatus('ready');
+          } else {
+            setModelStatus('not_downloaded');
+          }
+        }
+
+        // 3. Init Embedding Engine (Background)
         const embedFileName = MODELS.EMBEDDING.fileName;
         if (await modelExists(embedFileName)) {
           console.log('[Chat] Loading embedding model...');
@@ -96,20 +136,31 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const handleDownloadModel = async () => {
-    setModelStatus('downloading');
+  const handleDownloadModel = async (modelKey: 'router' | 'brain') => {
+    const config = modelKey === 'router' ? MODELS.SPEED_LLM : MODELS.PRIMARY_LLM;
+    const setStatus = modelKey === 'router' ? setRouterStatus : setBrainStatus;
+
+    setStatus('downloading');
     try {
       const uri = await downloadModel(
-        MODELS.PRIMARY_LLM.url,
-        MODELS.PRIMARY_LLM.fileName,
-        (progress) => setModelDownloadProgress(progress)
+        config.url,
+        config.fileName,
+        (progress) => setModelDownloadProgress(progress),
       );
-      setModelStatus('loading');
-      await llmEngine.init(uri);
-      setModelStatus('ready');
+      setStatus('loading');
+      if (modelKey === 'router') {
+        await routerEngine.init(uri);
+        setRouterStatus('ready');
+      } else {
+        await llmEngine.init(uri);
+        setBrainStatus('ready');
+      }
+      if (routerEngine.isLoaded || llmEngine.isLoaded) {
+        setModelStatus('ready');
+      }
     } catch (e) {
       console.error('Download error:', e);
-      setModelStatus('error');
+      setStatus('error');
     }
   };
 
@@ -387,24 +438,36 @@ export default function HomeScreen() {
 
   const renderModelStatus = () => {
     if (modelStatus === 'ready') return null;
-    
+
+    const needsRouter = routerStatus === 'not_downloaded';
+    const needsBrain = brainStatus === 'not_downloaded';
+    const isDownloading = routerStatus === 'downloading' || brainStatus === 'downloading';
+    const isLoading = routerStatus === 'loading' || brainStatus === 'loading';
+
     return (
       <View style={styles.modelStatusContainer}>
-        {modelStatus === 'not_downloaded' && (
+        {(needsRouter || needsBrain) && !isDownloading && !isLoading && (
           <View style={styles.downloadPrompt}>
             <Ionicons name="cloud-download-outline" size={32} color={colors.accent.primary} />
             <Text style={styles.downloadTitle}>Download Intelligence Core</Text>
             <Text style={styles.downloadSubtitle}>
               Lyla needs to download her brain. This happens once and stays on your device forever.
             </Text>
-            <Pressable style={styles.downloadButton} onPress={handleDownloadModel}>
-              <Text style={styles.downloadButtonText}>Download Model</Text>
-            </Pressable>
-            <Text style={styles.devNote}>Dev Note: You can also use xcrun simctl to copy the file into the simulator sandbox manually.</Text>
+            {needsRouter && (
+              <Pressable style={[styles.downloadButton, styles.downloadButtonSecondary]} onPress={() => handleDownloadModel('router')}>
+                <Text style={styles.downloadButtonTextSecondary}>⚡ Download Router (229 MB)</Text>
+              </Pressable>
+            )}
+            {needsBrain && (
+              <Pressable style={styles.downloadButton} onPress={() => handleDownloadModel('brain')}>
+                <Text style={styles.downloadButtonText}>🧠 Download Brain (918 MB)</Text>
+              </Pressable>
+            )}
+            <Text style={styles.devNote}>Dev Note: You can also use xcrun simctl to copy files into the simulator sandbox manually.</Text>
           </View>
         )}
         
-        {modelStatus === 'downloading' && (
+        {isDownloading && (
           <View style={styles.downloadPrompt}>
             <ActivityIndicator size="large" color={colors.accent.primary} />
             <Text style={styles.downloadTitle}>Downloading Model...</Text>
@@ -415,7 +478,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {modelStatus === 'loading' && (
+        {isLoading && !isDownloading && (
           <View style={styles.downloadPrompt}>
             <ActivityIndicator size="large" color={colors.accent.primary} />
             <Text style={styles.downloadTitle}>Loading Model into Memory</Text>
@@ -458,8 +521,20 @@ export default function HomeScreen() {
               </Text>
               <Text style={styles.statusSeparator}>·</Text>
               <Text style={styles.statusText}>
-                {modelStatus === 'ready' ? '🧠 Ready' : '⏳ ' + modelStatus}
+                {modelStatus === 'ready'
+                  ? brainStatus === 'ready'
+                    ? '🧠 Full'
+                    : routerStatus === 'ready'
+                      ? '⚡ Router'
+                      : '🧠 Ready'
+                  : '⏳ ' + modelStatus}
               </Text>
+              {isSwapping && (
+                <>
+                  <Text style={styles.statusSeparator}>·</Text>
+                  <Text style={styles.statusText}>Swapping...</Text>
+                </>
+              )}
             </View>
           </View>
           <View style={styles.headerRight}>
@@ -723,10 +798,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     width: '100%',
     alignItems: 'center',
+    marginBottom: spacing.sm,
   },
   downloadButtonText: {
     ...typography.label,
     color: colors.text.inverse,
+  },
+  downloadButtonSecondary: {
+    backgroundColor: colors.background.tertiary,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  downloadButtonTextSecondary: {
+    ...typography.label,
+    color: colors.text.primary,
   },
   progressBarBg: {
     width: '100%',

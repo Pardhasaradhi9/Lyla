@@ -36,6 +36,21 @@ export const MODELS = {
   },
 } as const;
 
+/** Router model inference parameters (350M) */
+export const ROUTER_CONFIG = {
+  n_ctx: 1024,
+  n_gpu_layers: 99,
+  n_batch: 256,
+  use_mlock: true,
+  use_mmap: true,
+  cache_type_k: 'q8_0',
+  cache_type_v: 'q8_0',
+  max_tokens: 256,
+  temperature: 0.1,
+  top_k: 10,
+  penalty_repeat: 1.05,
+} as const;
+
 /** LLM inference parameters (from TECH_STACK.md) */
 export const LLM_CONFIG = {
   n_ctx: 8192,
