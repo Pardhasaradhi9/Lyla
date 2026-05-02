@@ -6,7 +6,7 @@ import * as Clipboard from 'expo-clipboard';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { spacing, radius } from '@/theme/spacing';
-import { useAppStore } from '@/stores/app-store';
+import { useAppStore, type ModelStatus } from '@/stores/app-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useChatStore, Message } from '@/stores/chat-store';
 import { llmEngine } from '@/engines/llm';
@@ -36,6 +36,8 @@ export default function HomeScreen() {
   const setIsSwapping = useAppStore((s) => s.setIsSwapping);
   const modelDownloadProgress = useAppStore((s) => s.modelDownloadProgress);
   const setModelDownloadProgress = useAppStore((s) => s.setModelDownloadProgress);
+  const downloadingPhase = useAppStore((s) => s.downloadingPhase);
+  const setDownloadingPhase = useAppStore((s) => s.setDownloadingPhase);
 
   // Chat State
   const { messages, addMessage, updateLastMessage, isGenerating, setIsGenerating, conversationId, setConversationId, loadConversation } = useChatStore();
@@ -140,32 +142,92 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const handleDownloadModel = async (modelKey: 'router' | 'brain') => {
-    const config = modelKey === 'router' ? MODELS.SPEED_LLM : MODELS.PRIMARY_LLM;
-    const setStatus = modelKey === 'router' ? setRouterStatus : setBrainStatus;
+  const handleDownloadAll = async () => {
+    const steps: Array<{ key: string; label: string; config: { url: string; fileName: string }; phase: 'router' | 'brain'; init: (uri: string) => Promise<void>; setStatus: (s: ModelStatus) => void }> = [];
 
-    setStatus('downloading');
-    try {
-      const uri = await downloadModel(
-        config.url,
-        config.fileName,
-        (progress) => setModelDownloadProgress(progress),
-      );
-      setStatus('loading');
-      if (modelKey === 'router') {
-        await routerEngine.init(uri);
-        setRouterStatus('ready');
-      } else {
-        await llmEngine.init(uri);
-        setBrainStatus('ready');
-      }
-      if (routerEngine.isLoaded || llmEngine.isLoaded) {
-        setModelStatus('ready');
-      }
-    } catch (e) {
-      console.error('Download error:', e);
-      setStatus('error');
+    if (routerStatus === 'not_downloaded') {
+      steps.push({
+        key: 'router',
+        label: 'Router (229 MB)',
+        config: MODELS.SPEED_LLM,
+        phase: 'router',
+        init: (uri) => routerEngine.init(uri),
+        setStatus: setRouterStatus,
+      });
     }
+    if (brainStatus === 'not_downloaded') {
+      steps.push({
+        key: 'brain',
+        label: 'Brain (918 MB)',
+        config: MODELS.PRIMARY_LLM,
+        phase: 'brain',
+        init: (uri) => llmEngine.init(uri),
+        setStatus: setBrainStatus,
+      });
+    }
+
+    for (const step of steps) {
+      console.log(`[Download] Starting: ${step.label}`);
+      setDownloadingPhase(step.phase);
+      step.setStatus('downloading');
+
+      try {
+        const uri = await downloadModel(
+          step.config.url,
+          step.config.fileName,
+          (progress) => setModelDownloadProgress(progress),
+        );
+        console.log(`[Download] Finished: ${step.label}`);
+        step.setStatus('loading');
+        await step.init(uri);
+        step.setStatus('ready');
+        console.log(`[Download] Loaded into memory: ${step.label}`);
+      } catch (e) {
+        console.error(`[Download] FAILED: ${step.label}`, e);
+        step.setStatus('error');
+        setDownloadingPhase('idle');
+        return;
+      }
+    }
+
+    setDownloadingPhase('loading');
+
+    const embedFileName = MODELS.EMBEDDING.fileName;
+    if (!(await modelExists(embedFileName))) {
+      console.log('[Download] Starting: Embedding (59 MB)');
+      setDownloadingPhase('embedding');
+      try {
+        const uri = await downloadModel(
+          MODELS.EMBEDDING.url,
+          MODELS.EMBEDDING.fileName,
+          (progress) => setModelDownloadProgress(progress),
+        );
+        await embeddingEngine.init(uri);
+        console.log('[Download] Loaded into memory: Embedding');
+      } catch (e) {
+        console.warn('[Download] Embedding failed (non-critical):', e);
+      }
+    } else if (!embeddingEngine.isLoaded) {
+      try {
+        const embedPath = await getModelPath(embedFileName);
+        await embeddingEngine.init(embedPath);
+        console.log('[Download] Loaded into memory: Embedding (cached)');
+      } catch (e) {
+        console.warn('[Download] Embedding init failed (non-critical):', e);
+      }
+    }
+
+    if (routerEngine.isLoaded && llmEngine.isLoaded) {
+      console.log('[Download] All models ready ✓');
+    } else if (llmEngine.isLoaded) {
+      console.log('[Download] Brain ready ✓, Router failed ✗');
+    } else if (routerEngine.isLoaded) {
+      console.log('[Download] Router ready ✓, Brain failed ✗');
+    }
+
+    setModelDownloadProgress(1);
+    setDownloadingPhase('done');
+    setModelStatus('ready');
   };
 
   // ── Actions ─────────────────────────────────────────────────────
@@ -445,58 +507,49 @@ export default function HomeScreen() {
   const renderModelStatus = () => {
     if (modelStatus === 'ready') return null;
 
-    const needsRouter = routerStatus === 'not_downloaded';
-    const needsBrain = brainStatus === 'not_downloaded';
-    const isDownloading = routerStatus === 'downloading' || brainStatus === 'downloading';
-    const isLoading = routerStatus === 'loading' || brainStatus === 'loading';
+    const needsDownload = routerStatus === 'not_downloaded' || brainStatus === 'not_downloaded';
+    const isActive = downloadingPhase !== 'idle' && downloadingPhase !== 'done';
+    const phaseLabel: Record<string, string> = {
+      router: 'Router (229 MB)',
+      brain: 'Brain (918 MB)',
+      embedding: 'Embedding (59 MB)',
+      loading: 'Loading into memory...',
+    };
 
     return (
       <View style={styles.modelStatusContainer}>
-        {(needsRouter || needsBrain) && !isDownloading && !isLoading && (
+        {needsDownload && !isActive && (
           <View style={styles.downloadPrompt}>
             <Ionicons name="cloud-download-outline" size={32} color={colors.accent.primary} />
-            <Text style={styles.downloadTitle}>Download Intelligence Core</Text>
+            <Text style={styles.downloadTitle}>Set Up Lyla</Text>
             <Text style={styles.downloadSubtitle}>
-              Lyla needs to download her brain. This happens once and stays on your device forever.
+              Lyla needs her intelligence models to work. This is a one-time download that stays on your device.
             </Text>
-            {needsRouter && (
-              <Pressable style={[styles.downloadButton, styles.downloadButtonSecondary]} onPress={() => handleDownloadModel('router')}>
-                <Text style={styles.downloadButtonTextSecondary}>⚡ Download Router (229 MB)</Text>
-              </Pressable>
-            )}
-            {needsBrain && (
-              <Pressable style={styles.downloadButton} onPress={() => handleDownloadModel('brain')}>
-                <Text style={styles.downloadButtonText}>🧠 Download Brain (918 MB)</Text>
-              </Pressable>
-            )}
-            <Text style={styles.devNote}>Dev Note: You can also use xcrun simctl to copy files into the simulator sandbox manually.</Text>
-          </View>
-        )}
-        
-        {isDownloading && (
-          <View style={styles.downloadPrompt}>
-            <ActivityIndicator size="large" color={colors.accent.primary} />
-            <Text style={styles.downloadTitle}>Downloading Model...</Text>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${modelDownloadProgress * 100}%` }]} />
-            </View>
-            <Text style={styles.downloadSubtitle}>{Math.round(modelDownloadProgress * 100)}% Complete</Text>
+            <Pressable style={styles.downloadButton} onPress={handleDownloadAll}>
+              <Text style={styles.downloadButtonText}>Download Everything (~1.2 GB)</Text>
+            </Pressable>
           </View>
         )}
 
-        {isLoading && !isDownloading && (
+        {isActive && (
           <View style={styles.downloadPrompt}>
             <ActivityIndicator size="large" color={colors.accent.primary} />
-            <Text style={styles.downloadTitle}>Loading Model into Memory</Text>
-            <Text style={styles.downloadSubtitle}>Warming up the neural engine...</Text>
+            <Text style={styles.downloadTitle}>
+              {downloadingPhase === 'loading' ? 'Almost ready...' : `Downloading ${phaseLabel[downloadingPhase] || ''}`}
+            </Text>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${Math.round(modelDownloadProgress * 100)}%` }]} />
+            </View>
+            <Text style={styles.downloadSubtitle}>{Math.round(modelDownloadProgress * 100)}% — {phaseLabel[downloadingPhase] || 'Loading'}</Text>
           </View>
         )}
 
         {modelStatus === 'error' && (
           <View style={styles.downloadPrompt}>
             <Ionicons name="warning-outline" size={32} color={colors.status.error} />
-            <Text style={styles.downloadTitle}>Error Loading Model</Text>
-            <Pressable style={styles.downloadButton} onPress={() => setModelStatus('not_downloaded')}>
+            <Text style={styles.downloadTitle}>Something went wrong</Text>
+            <Text style={styles.downloadSubtitle}>Check the console logs for details.</Text>
+            <Pressable style={styles.downloadButton} onPress={() => { setModelStatus('not_downloaded'); setDownloadingPhase('idle'); }}>
               <Text style={styles.downloadButtonText}>Retry</Text>
             </Pressable>
           </View>
@@ -829,15 +882,6 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.text.inverse,
   },
-  downloadButtonSecondary: {
-    backgroundColor: colors.background.tertiary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  downloadButtonTextSecondary: {
-    ...typography.label,
-    color: colors.text.primary,
-  },
   progressBarBg: {
     width: '100%',
     height: 8,
@@ -849,13 +893,6 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     backgroundColor: colors.accent.primary,
-  },
-  devNote: {
-    ...typography.caption,
-    color: colors.text.tertiary,
-    marginTop: spacing.xl,
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
   inputBar: {
     flexDirection: 'row',

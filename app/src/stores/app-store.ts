@@ -10,6 +10,7 @@ interface AppState {
   // ── Model Status ────────────────────────────────────────────────
   modelStatus: ModelStatus;
   modelDownloadProgress: number; // 0-1
+  downloadingPhase: 'idle' | 'router' | 'brain' | 'embedding' | 'loading' | 'done';
   activeModel: string | null;
   routerStatus: ModelStatus;
   brainStatus: ModelStatus;
@@ -25,6 +26,7 @@ interface AppState {
   // ── Actions ─────────────────────────────────────────────────────
   setModelStatus: (status: ModelStatus) => void;
   setModelDownloadProgress: (progress: number) => void;
+  setDownloadingPhase: (phase: 'idle' | 'router' | 'brain' | 'embedding' | 'loading' | 'done') => void;
   setActiveModel: (model: string | null) => void;
   setRouterStatus: (status: ModelStatus) => void;
   setBrainStatus: (status: ModelStatus) => void;
@@ -38,6 +40,7 @@ export const useAppStore = create<AppState>((set) => ({
   // Initial state
   modelStatus: 'not_downloaded',
   modelDownloadProgress: 0,
+  downloadingPhase: 'idle' as const,
   activeModel: null,
   routerStatus: 'not_downloaded',
   brainStatus: 'not_downloaded',
@@ -49,6 +52,7 @@ export const useAppStore = create<AppState>((set) => ({
   // Actions
   setModelStatus: (status) => set({ modelStatus: status }),
   setModelDownloadProgress: (progress) => set({ modelDownloadProgress: progress }),
+  setDownloadingPhase: (phase) => set({ downloadingPhase: phase }),
   setActiveModel: (model) => set({ activeModel: model }),
   setRouterStatus: (status) => set({ routerStatus: status }),
   setBrainStatus: (status) => set({ brainStatus: status }),
