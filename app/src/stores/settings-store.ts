@@ -13,6 +13,7 @@ interface SettingsState {
   memoryEnabled: boolean;
   hapticsEnabled: boolean;
   biometricLockEnabled: boolean;
+  knowledgeEnabled: boolean;
 
   setSelectedModel: (model: 'primary' | 'speed') => void;
   setAutoPlayTTS: (autoPlay: boolean) => void;
@@ -22,6 +23,7 @@ interface SettingsState {
   setMemoryEnabled: (enabled: boolean) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setBiometricLockEnabled: (enabled: boolean) => void;
+  setKnowledgeEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -33,6 +35,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   memoryEnabled: true,
   hapticsEnabled: true,
   biometricLockEnabled: false,
+  knowledgeEnabled: true,
 
   setSelectedModel: (model) => set({ selectedModel: model }),
   setAutoPlayTTS: (autoPlay) => set({ autoPlayTTS: autoPlay }),
@@ -42,4 +45,5 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setMemoryEnabled: (enabled) => set({ memoryEnabled: enabled }),
   setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
   setBiometricLockEnabled: (enabled) => set({ biometricLockEnabled: enabled }),
+  setKnowledgeEnabled: (enabled) => set({ knowledgeEnabled: enabled }),
 }));

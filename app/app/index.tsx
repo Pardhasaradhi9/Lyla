@@ -41,6 +41,9 @@ export default function HomeScreen() {
   const { messages, addMessage, updateLastMessage, isGenerating, setIsGenerating, conversationId, setConversationId, loadConversation } = useChatStore();
   const { autoPlayTTS, hapticsEnabled } = useSettingsStore();
   
+  // Knowledge toggle state
+  const [knowledgeActive, setKnowledgeActive] = useState(false);
+  
   function maybeHaptic(fn: () => void) {
     if (hapticsEnabled) fn();
   }
@@ -50,10 +53,10 @@ export default function HomeScreen() {
   const flatListRef = useRef<FlatList>(null);
   const orchestratorRef = useRef<Orchestrator | null>(null);
 
-  // Create orchestrator (connects to LLM engine + Router)
+  // Create orchestrator (connects to LLM engine + Router + Knowledge)
   useEffect(() => {
     orchestratorRef.current = createOrchestrator({
-      streamCompletion: (messages, onToken) => llmEngine.complete(messages, onToken),
+      streamCompletion: (messages, onToken, sysPrompt) => llmEngine.complete(messages, onToken, sysPrompt),
       isModelReady: () => llmEngine.isLoaded,
       isRouterReady: () => routerEngine.isLoaded,
       routerClassify: (msg) => routerEngine.classify(msg),
@@ -69,6 +72,7 @@ export default function HomeScreen() {
         if (!routerEngine.isLoaded) return [];
         return routerEngine.extractFacts(userMsg, assistantMsg);
       },
+      knowledgeEnabled: () => useSettingsStore.getState().knowledgeEnabled,
     });
   }, []);
 
@@ -234,10 +238,12 @@ export default function HomeScreen() {
           streamedContent += token;
           updateLastMessage(streamedContent);
         },
+        { knowledgeActive: knowledgeActive },
       );
 
       const finalContent = result.response || streamedContent;
       updateLastMessage(finalContent, true);
+      setKnowledgeActive(false);
 
       if (autoPlayTTS && finalContent) {
         speak(finalContent, {
@@ -603,10 +609,29 @@ export default function HomeScreen() {
             />
           </View>
           <Pressable
-            style={[styles.micButton, (isGenerating || inputText.length > 0) && styles.buttonDisabled]}
-            disabled={isGenerating || inputText.length > 0}
+            style={[
+              styles.micButton,
+              knowledgeActive && styles.knowledgeActive,
+              !isOnline && styles.buttonDisabled,
+            ]}
+            onPress={() => {
+              if (!isOnline) return;
+              maybeHaptic(() => hapticSelection());
+              setKnowledgeActive(!knowledgeActive);
+            }}
+            disabled={isGenerating}
           >
-            <Ionicons name="mic" size={22} color={inputText.length > 0 ? colors.text.tertiary : colors.text.primary} />
+            <Ionicons
+              name="globe-outline"
+              size={22}
+              color={
+                knowledgeActive
+                  ? colors.accent.primary
+                  : !isOnline
+                    ? colors.text.tertiary
+                    : colors.text.primary
+              }
+            />
           </Pressable>
           <Pressable
             style={[styles.sendButton, (!inputText.trim() || isGenerating) && styles.sendButtonDisabled]}
@@ -879,6 +904,11 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  knowledgeActive: {
+    backgroundColor: colors.accent.primary + '20',
+    borderWidth: 1,
+    borderColor: colors.accent.primary,
   },
   feedbackBadge: {
     position: 'absolute',

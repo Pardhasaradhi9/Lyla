@@ -1,0 +1,356 @@
+A quantized MobileBERT-style classifier can meet your size and latency targets on paper, but it will add a second runtime (TFLite or ONNX) and some native work; given you already have a 350M GGUF model loaded via llama.rn, I’d start with Path A and only invest in Path B if you can’t hit 95%+ accuracy with better prompting and a small labeled set.[1][2][3][4][5][6]
+
+Below I’ll go through each of your questions and then compare Path A vs Path B.
+
+***
+
+## 1. MobileBERT size, speed, and accuracy
+
+**Model size**
+
+- Google’s TF Lite text classification docs list the MobileBERT-based classifier (`mobilebert_classifier`) at about 100 MB unquantized and 25 MB after quantization for on-device use.[2]
+- The Google AI Edge text classifier docs say the MobileBERT model is “over 100 MB” but quantizing the exported TFLite classifier brings it down to roughly 28 MB.[7]
+
+This puts a quantized MobileBERT classifier right at your “ideal” 25 MB target and comfortably under 50 MB.
+
+**Accuracy (benchmarks)**
+
+- The original MobileBERT paper reports a GLUE score of 77.7, only 0.6 below BERT_BASE, while being substantially smaller and faster.[8][1]
+- On SQuAD 1.1/2.0, MobileBERT actually *outperforms* BERT_BASE, with dev F1 90.0/79.2 versus lower scores for BERT_BASE.[1][8]
+- Follow‑up work using MobileBERT for emotion and sentiment classification on conversation benchmarks (MELD, EmoryNLP, DailyDialog, IEMOCAP) finds that compact MobileBERT models with improved losses can match or approach larger models, supporting the idea that it is competitive on classification tasks.[9][10]
+
+These results suggest that, with fine‑tuning on your 20+ intents, a MobileBERT classifier should be able to reach or exceed 95 % accuracy on a well‑curated dataset.
+
+**Inference speed**
+
+- The MobileBERT paper reports 62 ms latency on a Pixel 4 phone for natural language inference (GLUE) with sequence length 128, and a 4.3× smaller / 5.5× faster profile than BERT_BASE.[1]
+- A related OpenReview version reports 367 ms on a Pixel 3 for the same tasks, reflecting generational hardware differences.[11]
+
+For your narrow intent classification use case:
+
+- Utterances are short (likely far below 128 tokens), and you would use quantized TFLite.  
+- Google’s docs describe MobileBERT as specifically “4.3x smaller and 5.5x faster than BERT‑Base while achieving competitive results, suitable for on‑device applications,” with the MobileBERT classifier listed as a 25 MB quantized model.[2]
+
+So a properly quantized MobileBERT classifier should be able to run comfortably under your 50 ms budget on modern phones in practice, but the published number you can point to is 62 ms on Pixel 4 for a heavier NLI setup.[2][1]
+
+***
+
+## 2. React Native / Expo‑compatible inference engines for BERT‑style models
+
+You have three realistic options for RN + Expo + Hermes:
+
+### TensorFlow Lite via react-native-fast-tflite
+
+- `react-native-fast-tflite` is a high‑performance TFLite wrapper built on JSI, with zero‑copy ArrayBuffers and direct access to the C/C++ TFLite core.[4][12]
+- It supports both iOS and Android, plus GPU delegates (CoreML/Metal on iOS, Android GPU / NNAPI), which is ideal for small transformer classifiers.[4]
+- The library is implemented as a native module (JSI), so it is compatible with Hermes and does not rely on `import.meta` or Web APIs.[13][14][4]
+
+This is the cleanest way to run a MobileBERT **TFLite** classifier in a RN + Expo app.
+
+### ONNX Runtime via onnxruntime-react-native
+
+- `onnxruntime-react-native` is a JS bridge to ONNX Runtime, providing an `InferenceSession` API to load and run ONNX models on React Native.[5]
+- An example Expo Snack shows loading a local or remote ONNX model in a managed Expo app using `expo-asset` plus `InferenceSession.create(asset.localUri, { executionProviders: ['cpu'] })`.[15]
+- The podspec specifies iOS 15.1+ for ONNX Runtime iOS, so you need that as your minimum deployment target.[16]
+
+So if you convert MobileBERT or TinyBERT to ONNX, you can run it with this runtime on both platforms, but you must build your own tokenizer and classification head glue in JS/TS.
+
+### Transformers.js and similar JS‑only runtimes
+
+- The @xenova/transformers stack (Transformers.js) has known issues under Hermes; `import.meta` is currently unsupported and crashes Hermes builds in React Native.[17][18]
+- Example projects that marry transformers.js with onnxruntime-react-native require patches or forks to work around Hermes limitations.[18][19]
+
+Given your use of Hermes (Expo SDK 54 defaults to Hermes), JS‑only transformer runtimes are not production‑ready today without substantial patching.
+
+**Answer:** For RN + Expo + Hermes, the practical choices are:
+
+- **TFLite + `react-native-fast-tflite`** (recommended for MobileBERT classifier).[12][4]
+- **ONNX + `onnxruntime-react-native`** (if you prefer ONNX and are okay writing the tokenizer layer).[5][15]
+
+***
+
+## 3. Required format for MobileBERT on-device
+
+MobileBERT can exist in several formats along the pipeline:
+
+- **Training / fine‑tuning:** TensorFlow / Keras checkpoints (often HuggingFace Transformers in PyTorch or TF).[20][8][1]
+- **On‑device canonical format (Google tooling):** TensorFlow Lite `.tflite` models based on the `mobilebert_classifier` spec in TF Lite Model Maker and Google’s Edge text classification docs.[21][2]
+- **TFLite Task Library:** MobileBERT classifiers are run via `BertNLClassifier` or generic `NLClassifier` APIs, expecting a MobileBERT TFLite model with embedded metadata for tokenizer vocab and labels.[22][23][2]
+- **Size after export:** Quantized TFLite MobileBERT classifier ~25–28 MB, as discussed above.[7][2]
+
+You *can* convert BERT‑style models to **ONNX** and then to other runtimes, but Google’s tooling and most published examples around MobileBERT for mobile assume **TFLite** as the target format.[21][22][2]
+
+So for your purposes:
+
+- If you want to leverage Google’s on‑device tooling and the easiest fine‑tune‑and‑deploy path: **use TFLite**.  
+- ONNX is an option if you want a framework‑agnostic runtime and are comfortable writing your own tokenizer + head in JS/TS.[24][5]
+
+***
+
+## 4. Can MobileBERT run via llama.cpp / llama.rn (GGUF)?
+
+This is where things get tricky.
+
+**BERT support in llama.cpp**
+
+- Historically, GGUF and llama.cpp were focused on autoregressive decoder‑only LLMs (LLaMA, Qwen, etc.), and BERT architectures were not supported.[25][26]
+- A GitHub issue and subsequent PR added **BERT architecture support** to llama.cpp for embedding models, including a conversion path to GGUF and a WordPiece tokenizer.[26][27]
+- A recent tweet from the maintainer shows a Google BERT uncased model converted to GGUF and running in llama.cpp to produce embeddings, confirming that BERT‑style models can now be converted to GGUF and executed.[28]
+
+However:
+
+- The focus of current BERT support is sentence embedding / feature extraction, not full classification heads, and post‑processing (e.g., pooling, classification layers) varies by model.[26][28]
+- There is **no published GGUF conversion pipeline or ready‑to‑use MobileBERT GGUF model** from Google or the community at this time.[25][26]
+
+**llama.rn**
+
+- `llama.rn` is a React Native binding to llama.cpp that currently exposes GGUF models primarily for autoregressive text generation (LLMs) and grammar‑controlled decoding.[6][29]
+- The local‑LLM community currently recommends llama.rn for running GGUF LLaMA‑family models in RN apps, not for BERT‑style encoders.[3][29]
+
+**Conclusion for GGUF:**
+
+- In principle, a BERT‑style model *can* be converted to GGUF and run via llama.cpp now, but:
+  - The tooling is geared toward BERT‑embeddings, not MobileBERT classification.[27][28]
+  - There is no off‑the‑shelf MobileBERT‑as‑GGUF model or converter, so you’d be pioneering the path.[25][26]
+  - llama.rn would need to expose the new BERT pathways and outputs, which it does not currently advertise.[29][6]
+
+Practically, MobileBERT should be treated as **needing its own runtime (TFLite or ONNX)** rather than something you can easily plug into your existing llama.rn GGUF stack right now.
+
+***
+
+## 5. Alternatives to MobileBERT for on-device classification
+
+### DistilBERT, ALBERT, TinyBERT, MiniLM
+
+A recent comparison of compact transformers shows:[30][31][32]
+
+- **DistilBERT**: 66 M parameters, ~256 MB, GLUE ~79.1, fast but large for on‑device unless heavily quantized.[31][32]
+- **ALBERT Base**: 12 M parameters, ~45 MB, GLUE ~80.1, but not specifically optimized for mobile inferencing in the way MobileBERT is.[31]
+- **TinyBERT**: ~14.5 M parameters, ~60 MB, GLUE ~76.5, 7.5× smaller and 9.4× faster than BERT on inference, explicitly targeting mobile/edge.[30][31]
+- **MiniLM**: 33 M parameters, ~120 MB, GLUE ~81.0, good accuracy but larger on disk.[31]
+
+With aggressive quantization you could push these into your size budget, but the official docs and mobile tooling from Google are strongest for MobileBERT, not for these variants.
+
+### Very small models (word vectors, fastText, etc.)
+
+Google’s TF Lite text classification toolkit also supports:[21][2]
+
+- **Average word embedding model** (`average_word_vec`) with model size <1 MB, extremely fast but slightly lower accuracy than BERT‑style models.[2][21]
+
+fastText is another strong baseline:
+
+- Facebook’s fastText library for text classification is designed for speed, with the ability to train on >1 B tokens in minutes and classify hundreds of thousands of sentences per minute on CPU.[33][34]
+- Benchmarks show fastText classification is competitive with deeper neural networks on sentiment and topic classification while being 1 000–10 000× faster.[33]
+
+For a 20‑intent classifier, an optimized fastText or average‑word‑embedding model might hit 95 %+ accuracy with a well‑labeled dataset, while being tiny (<1 MB) and ultra‑fast.[33][2]
+
+**Summary of alternatives:**
+
+- If you **want the simplest, smallest model** and are okay with slightly lower ceiling accuracy: average‑word‑embedding or fastText‑style classifier.[33][2]
+- If you **want “near‑BERT” accuracy with mobile‑friendly size** and integrated tooling: quantized **MobileBERT** remains the most practical.[1][2]
+
+***
+
+## 6. Engineering effort to integrate into RN + Expo
+
+### Using MobileBERT via TFLite (`react-native-fast-tflite`)
+
+Steps at a high level:
+
+1. **Fine‑tune MobileBERT with TF Lite Model Maker**  
+   - Use TF Lite Model Maker’s text classification module, selecting `mobilebert_classifier` as the model spec.[21][2]
+   - Customize `seq_len`, `learning_rate`, `dropout_rate` as needed, and train on your 20+ intent dataset.[21]
+   - Export the quantized TFLite classifier model (.tflite).[2][21]
+
+2. **Bundle and run TFLite in RN with `react-native-fast-tflite`**  
+   - Add the library and its config plugin to your Expo app; this will require **`expo prebuild`** to generate native iOS/Android projects and link the TFLite C/C++ libraries.[4]
+   - For iOS, enable CoreML delegate in the pod configuration if you want GPU acceleration.[4]
+   - For Android, configure GPU libraries and optionally NNAPI (though NNAPI is deprecated from Android 15 onward and GPU delegate is recommended).[4]
+   - In JS, load the model via `loadTensorflowModel(require('assets/mobilebert_classifier.tflite'), delegate)` and call `model.runSync` on the encoded token tensors.[12][4]
+
+3. **Tokenization and preprocessing**  
+   - You either encode WordPiece inputs on-device in JS (custom implementation or using a tiny WordPiece tokenizer), or embed tokenization metadata in the TFLite model and use an external preprocessing step before shipping.[23][22][2]
+
+**Effort profile:**  
+- Requires adding one new native module and embracing `expo prebuild` (which you are likely already doing for llama.rn and other native modules).  
+- You’ll need a small TF training pipeline (Python) and a tokenization story, but Google’s tflite‑support / Model Maker stack is designed for this workflow.[23][21]
+
+### Using BERT‑style ONNX via `onnxruntime-react-native`
+
+1. Convert MobileBERT (or TinyBERT) to ONNX.  
+2. Bundle the ONNX file and load it with `InferenceSession.create(modelPath, { executionProviders: ['cpu'] })`.[15][5]
+3. Implement WordPiece tokenization, attention masks, etc., in JS/TS and feed tensors to the ONNX model.[24]
+
+This avoids TFLite but adds more custom glue code and does not leverage the specialized mobile tooling (BertNLClassifier, metadata, etc.).[22][2]
+
+**Relative effort vs your current stack:**
+
+- You already have llama.rn integrated, which is one complex native module.[6][29]
+- Adding TFLite or ONNX is a similar level of complexity: new native module, new Pod/Gradle config, and some Expo prebuild plumbing.[5][15][4]
+- Compared with simply adding more prompt logic around your existing 350M model, Path B is a **non‑trivial** bump in engineering effort.
+
+***
+
+## 7. Fine‑tuning MobileBERT on your 20+ intents
+
+Yes, this is straightforward with existing tools:
+
+- **TensorFlow Lite Model Maker**:  
+  - Supports text classification with MobileBERT via the `mobilebert_classifier` model spec.[2][21]
+  - Uses transfer learning on top of MobileBERT; you only need a labeled CSV (text + label).[21]
+  - Exposes parameters like `seq_len`, `trainable`, `dropout_rate`, `learning_rate`, and `model_dir` for fine‑tuning.[2][21]
+  - Exports a ready‑to‑deploy TFLite model, optionally quantized, along with metadata for tokenizer and labels.[21][2]
+
+- **tflite‑support / BertNLClassifier**:  
+  - Shows how to load a `mobilebert.tflite` text classifier and run `.classify(text)` directly in Python, mirroring the Android `BertNLClassifier` API and confirming the intended deployment pattern.[22][23]
+
+Alternatively, you can fine‑tune MobileBERT with HuggingFace Transformers in PyTorch/TF and then convert to TFLite, but Model Maker gives you an end‑to‑end path optimized for mobile.[20][21]
+
+***
+
+## Path A vs Path B for Lyla
+
+### Path A: Existing 350M GGUF model via llama.rn
+
+**Pros**
+
+- **Zero additional binary size / RAM**: You already ship and load LFM2.5‑350M via llama.rn for generation; classification via prompting reuses the same context and weights.[29][6]
+- **No new runtime to integrate**: No extra native module beyond what you already maintain.  
+- **High flexibility**: You can easily change intents, prompting strategies, and use richer context (conversation history, device state) inside the classification prompt.  
+
+**Cons**
+
+- **Latency**: You’re seeing ~50–100 ms per classification query; that meets your 50–100 ms observation but is close to your desired upper bound.  
+- **Determinism and calibration**: Prompt‑based classification can be more variable than a dedicated classifier, and hitting consistent 95 %+ accuracy may require careful prompt tuning and temperature/logit bias tricks.  
+- **Throughput**: If you later want to classify every ASR chunk or run multiple classification stages, a 350M model used for everything could become the bottleneck.
+
+### Path B: Add a MobileBERT (or similar) on-device classifier
+
+**Pros**
+
+- **Smaller, faster classifier**: A quantized MobileBERT classifier is ~25–28 MB and designed for mobile latency, with published 62 ms latency on Pixel 4 at seq_len 128 and substantially higher efficiency than BERT_BASE.[1][2]
+- **Task‑optimized**: Fine‑tuned specifically on your 20+ intents, it should surpass a general 350M model doing zero/few‑shot prompting on that specific classification task, both in accuracy and calibration.[10][9][1]
+- **Scalability**: Can be called frequently (e.g., on every user utterance or partial ASR transcript) without tying up your generation model.  
+
+**Cons**
+
+- **New runtime and integration work**: Requires integrating TFLite (easiest via `react-native-fast-tflite`) or ONNX Runtime, plus Expo prebuild and extra native configuration.[15][5][4]
+- **Extra binary size**: Adds ~25–30 MB to your app bundle for the classifier model, plus TFLite/ONNX runtime overhead.[7][4][2]
+- **Tokenization path**: You must adopt or implement WordPiece tokenization on-device or rely on metadata‑driven tooling; for a compact app, that’s extra complexity.[23][22][2]
+- **GGUF integration is not ready**: You cannot realistically reuse llama.rn for MobileBERT today; you need a separate stack.[27][28][6][26][25]
+
+### Which path should you choose?
+
+Given your constraints and current stack:
+
+- You already have a 350M GGUF model loaded via llama.rn and are getting ~50–100 ms per classification call.[6][29]
+- A MobileBERT classifier would likely reduce classification latency somewhat and give you a tight, fine‑tuned 20‑intent head, but at the cost of:
+  - ~25–30 MB extra on disk.[7][2]
+  - A new native runtime (TFLite/ONNX) and Expo prebuild integration.[5][15][4]
+
+**Recommendation:**
+
+1. **Short term (shipping quickly):**  
+   - Stick with **Path A** and invest in:
+     - Better prompt design for classification (e.g., explicit label descriptions, few‑shot examples).  
+     - A small labeled evaluation set for your 20+ intents to empirically validate whether you can hit >95 % accuracy with the 350M model.  
+   - This leverages your existing llama.rn integration and avoids any new native module.[3][29][6]
+
+2. **Medium term (if accuracy with Path A plateaus below 95 % or you need higher throughput):**  
+   - Add a dedicated classifier following **Path B**, with **quantized MobileBERT via TFLite + `react-native-fast-tflite`** as the primary candidate.[4][2][21]
+   - Use TF Lite Model Maker to fine‑tune MobileBERT on your 20+ intents and export a ~25 MB TFLite model, then integrate it as a pure “NLU front‑end” for Lyla.[22][2][21]
+
+3. **Alternative if you want minimal complexity but better than regex:**  
+   - Consider a **fastText‑style classifier or TF Lite average‑word‑embedding classifier** as a tiny (sub‑1 MB) middle ground that still likely surpasses regex and can approach transformer‑level accuracy on simple intents.[34][33][2]
+
+In other words: Path B (MobileBERT) *is* technically worth it **only if** your empirical evaluation shows that the 350M model cannot reliably achieve your 95 %+ target or you later need a very high‑throughput, low‑latency classifier. Otherwise, given your current 350M model and llama.rn setup, Path A is the more pragmatic choice for the next iteration.
+
+Sources
+[1] MobileBERT: a Compact Task-Agnostic BERT for Resource-Limited ... https://arxiv.org/abs/2004.02984
+[2] Export as a TensorFlow Lite... https://ai.google.dev/edge/litert/libraries/modify/text_classification
+[3] Everything I learned building on-device AI into a React Native app ... https://www.reddit.com/r/LocalLLaMA/comments/1renuky/everything_i_learned_building_ondevice_ai_into_a/
+[4] react-native-fast-tflite - NPM https://www.npmjs.com/package/react-native-fast-tflite?activeTab=readme
+[5] onnxruntime-react-native https://www.npmjs.com/package/onnxruntime-react-native
+[6] llama.rn - UNPKG https://app.unpkg.com/llama.rn@0.4.0/files/README.md
+[7] Text classification model customization guide | Google AI Edge https://ai.google.dev/edge/mediapipe/solutions/customization/text_classifier
+[8] MobileBERT: a Compact Task-Agnostic BERT for Resource-Limited Devices https://www.aclweb.org/anthology/2020.acl-main.195
+[9] Low-resource MobileBERT for emotion recognition in imbalanced text datasets mitigating challenges with limited resources https://dx.plos.org/10.1371/journal.pone.0312867
+[10] Adaptive multitask emotion recognition and sentiment analysis using resource-constrained MobileBERT and DistilBERT: an efficient approach for edge devices https://peerj.com/articles/cs-3287
+[11] MobileBERT: Task-Agnostic Compression of BERT by Progressive... https://openreview.net/forum?id=SJxjVaNKwB
+[12] mrousavy/react-native-fast-tflite: 🧬 High-performance ... https://github.com/mrousavy/react-native-fast-tflite
+[13] Using Hermes - React Native https://reactnative.dev/docs/hermes
+[14] Using Hermes Engine - Expo Documentation https://docs.expo.dev/guides/using-hermes/
+[15] Load ORT Model in React-Native Expo · Issue #11507 https://github.com/microsoft/onnxruntime/issues/11507
+[16] onnxruntime/js/react_native/onnxruntime-react-native.podspec at main · microsoft/onnxruntime https://github.com/microsoft/onnxruntime/blob/main/js/react_native/onnxruntime-react-native.podspec
+[17] Module crashes webpack build due to use of new URL('./', import ... https://github.com/huggingface/transformers.js/issues/984
+[18] 'import.meta' is currently unsupported, js engine: hermes · Issue #16 ... https://github.com/hans00/react-native-transformers-example/issues/16
+[19] daviddaytw/react-native-transformers: Run local LLM from ... https://github.com/daviddaytw/react-native-transformers
+[20] MobileBERT - Hugging Face https://huggingface.co/docs/transformers/en/model_doc/mobilebert
+[21] TensorFlow Lite Text Classification Models with Model Maker https://fritz.ai/tensorflow-lite-text-classification-models-with-model-maker/
+[22] Easy ML mobile development with TensorFlow Lite Task ... https://blog.tensorflow.org/2020/09/introducing-tensorflow-lite-task-library.html
+[23] using android pre build tensorflow tflight model from android example in python code https://www.appsloveworld.com/tensorflow/53/using-android-pre-build-tensorflow-tflight-model-from-android-example-in-python-c?expand_article=1
+[24] How to Use an ONNX Model in React Native (and Other Mobile App ... https://simplico.net/2026/01/21/how-to-use-an-onnx-model-in-react-native-and-other-mobile-app-frameworks/
+[25] google-bert/bert-base-uncased · Convert model to GGUF or format ... https://huggingface.co/google-bert/bert-base-uncased/discussions/66
+[26] llama : add BERT support · Issue #2872 · ggml-org/llama.cpp https://github.com/ggml-org/llama.cpp/issues/2872
+[27] Add support for BERT embedding models by iamlemec · Pull Request #5423 · ggml-org/llama.cpp https://github.com/ggml-org/llama.cpp/pull/5423
+[28] llama.cpp supports most BERT models, though there are a lot of ... https://x.com/ggerganov/status/1870134055716389281
+[29] Getting Started - React Native AI https://www.react-native-ai.dev/docs/llama/getting-started
+[30] TinyBERT: Distilling BERT for Natural Language Understanding https://www.reddit.com/r/MachineLearning/comments/daom3a/tinybert_distilling_bert_for_natural_language/
+[31] DistilBERT, ALBERT, and Beyond: Comparing Top Small Language ... https://www.c-sharpcorner.com/article/distilbert-albert-and-beyond-comparing-top-small-language-models/
+[32] Introduction to DistilBERT Model - GeeksforGeeks https://www.geeksforgeeks.org/nlp/introduction-to-distilbert-model/
+[33] fastText on mobile https://fasttext.cc/blog/2017/05/02/blog-post.html
+[34] An intro to text classification with Facebook's fastText (Natural ... https://towardsdatascience.com/natural-language-processing-with-fasttext-part-1-an-intro-to-text-classification-with-fasttext-11b9771722d8/
+[35] Real-Time Dolphin Whistle Detection on Raspberry Pi Zero 2 W with a TFLite Convolutional Neural Network https://www.mdpi.com/2218-6581/14/5/67
+[36] Detection and Counting of Grape Leaves Using YOLOv8 via TFLite on Mobile Applications https://ieeexplore.ieee.org/document/10763328/
+[37] TFLite Models for MobileBERT for MLPerf Inference https://zenodo.org/record/3878955
+[38] A mobileBERT-based preset class fusion text classification algorithm https://www.spiedigitallibrary.org/conference-proceedings-of-spie/12645/2681099/A-mobileBERT-based-preset-class-fusion-text-classification-algorithm/10.1117/12.2681099.full
+[39] Deep Learning Model for Diabetic Retinopathy Screening: A Mobile-Ready Solution for Resource-Limited Settings https://ieeexplore.ieee.org/document/11391201/
+[40] Fine-Tune DistilBERT, MobileBERT, and TinyBERT for Fake News ... https://www.youtube.com/watch?v=wOFf7faQSsw
+[41] React Native Fast TFLite 使用教程原创 https://blog.csdn.net/gitblog_01095/article/details/141238875
+[42] Google | mobilebert-edgetpu | Kaggle https://www.kaggle.com/models/google/mobilebert-edgetpu/tfLite/xs/1?tfhub-redirect=true
+[43] How to load a saved Machine Learning model in React-Native? (for ... https://stackoverflow.com/questions/75026977/how-to-load-a-saved-machine-learning-model-in-react-native-for-android-ios
+[44] kenhktsui/llm-data-textbook-quality-fasttext-classifier-v1 https://huggingface.co/kenhktsui/llm-data-textbook-quality-fasttext-classifier-v1
+[45] When Less is More: Achieving Faster Convergence in Distributed Edge
+  Machine Learning https://arxiv.org/pdf/2410.20495.pdf
+[46] Green AI: A Preliminary Empirical Study on Energy Consumption in DL
+  Models Across Different Runtime Infrastructures http://arxiv.org/pdf/2402.13640.pdf
+[47] End-to-end deep learning inference with CMSSW via ONNX using docker https://arxiv.org/pdf/2309.14254.pdf
+[48] Analysis of Failures and Risks in Deep Learning Model Converters: A Case
+  Study in the ONNX Ecosystem https://arxiv.org/pdf/2303.17708.pdf
+[49] ReuNify: A Step Towards Whole Program Analysis for React Native Android
+  Apps http://arxiv.org/pdf/2309.03524.pdf
+[50] End-to-end deep learning inference with CMSSW via ONNX using Docker https://www.epj-conferences.org/articles/epjconf/pdf/2024/05/epjconf_chep2024_09015.pdf
+[51] Interoperating Deep Learning models with ONNX.jl https://proceedings.juliacon.org/papers/10.21105/jcon.00059.pdf
+[52] Cloud-Native Workload Orchestration at the Edge: A Deployment Review and Future Directions https://www.mdpi.com/1424-8220/23/4/2215
+[53] [Build] React Native app does not work when i import ... - GitHub https://github.com/microsoft/onnxruntime/issues/17773
+[54] How to Use Hermes Engine for Better React Native Performance https://oneuptime.com/blog/post/2026-01-15-react-native-hermes-engine/view
+[55] mediapipe_text | Dart package https://pub.dev/packages/mediapipe_text
+[56] React Native Evals, Expo SDK 55, and WebAssembly in Hermes https://www.linkedin.com/pulse/react-native-evals-expo-sdk-55-webassembly-hermes-callstack-gi3rc
+[57] Fossies https://fossies.org/linux/mediapipe/mediapipe/tasks/testdata/text/BUILD
+[58] Mobile Wheels - BeeWare https://beeware.org/mobile-wheels/
+[59] Porting Large Language Models to Mobile Devices for Question Answering https://arxiv.org/pdf/2404.15851.pdf
+[60] Code Llama: Open Foundation Models for Code https://arxiv.org/pdf/2308.12950.pdf
+[61] AWQ: Activation-aware Weight Quantization for LLM Compression and
+  Acceleration https://arxiv.org/pdf/2306.00978.pdf
+[62] Efficient and Effective Text Encoding for Chinese LLaMA and Alpaca http://arxiv.org/pdf/2304.08177.pdf
+[63] LLaMA-Adapter V2: Parameter-Efficient Visual Instruction Model https://arxiv.org/pdf/2304.15010.pdf
+[64] Optimization of Armv9 architecture general large language model
+  inference performance based on Llama.cpp http://arxiv.org/pdf/2406.10816.pdf
+[65] QLLM: Accurate and Efficient Low-Bitwidth Quantization for Large
+  Language Models https://arxiv.org/pdf/2310.08041.pdf
+[66] Make LLM a Testing Expert: Bringing Human-Like Interaction to Mobile GUI Testing via Functionality-Aware Decisions https://dl.acm.org/doi/pdf/10.1145/3597503.3639180
+[67] Cannot use seq_len other than 128 with BertNLClassifier – Model Maker Text Classification example · Issue #43962 · tensorflow/tensorflow https://github.com/tensorflow/tensorflow/issues/43962
+[68] JSinAja: Javascript Programming Learning Application (React JS, React Native, Node JS) Mobile Based Using Problem Based Learning Method http://journal2.um.ac.id/index.php/lite/article/view/41036
+[69] Pengembangan Aplikasi Mobile "MyAgenda" dengan React Native, Node.js, dan MySQL https://santika.upnjatim.ac.id/submissions/index.php/santika/article/view/568
+[70] Smart Group Travel System: Dynamic Matching and Planning with React Native and MongoDB https://ieeexplore.ieee.org/document/11158111/
+[71] Development of a React Native-Based Mobile E-Commerce Application to Optimize Online Sales for MSMEs: A Case Study of New Delisio Bakery Cake https://trilogi.ac.id/journal/ks/index.php/JISA/article/view/2122
+[72] Native versus non native : A comparison of React Native and Angular NativeScript to native mobile applicationsParallelism in Node.js applications https://www.semanticscholar.org/paper/ad3b51085053aee463b45805bff9e8570dd7f6a8
+[73] Data Security Methods in Mobile Applications on React Native https://www.theamericanjournals.com/index.php/tajet/article/view/5869/5431
+[74] Development of Acid-Base E-Modules Based on Guided Discovery Learning Using React Native to Improve Problem Solving Skills of Phase F High School Students https://jppipa.unram.ac.id/index.php/jppipa/article/view/12212
+[75] Perancangan dan Implementasi Aplikasi Mobile Ovenia Untuk Pemesanan Roti Berbasis React Native https://santika.upnjatim.ac.id/submissions/index.php/santika/article/view/600
+[76] Transformers.js in React.js - javascript - Stack Overflow https://stackoverflow.com/questions/77047800/transformers-js-in-react-js
+[77] MediaPipe Text for Flutter https://pub.dev/documentation/mediapipe_text/latest/index.html
+[78] react-native-tensorflow-lite https://classic.yarnpkg.com/en/package/react-native-tensorflow-lite
+[79] Build an object classification app with TensorFlow.js and React Native https://blog.logrocket.com/build-object-classification-app-tensorflow-react-native/
+[80] hans00/react-native-transformers-example - GitHub https://github.com/hans00/react-native-transformers-example
+[81] Running LLMs in-browser via WebGPU, Transformers.js, and ... https://www.reddit.com/r/LocalLLaMA/comments/1qyemhf/running_llms_inbrowser_via_webgpu_transformersjs/

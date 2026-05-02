@@ -1,63 +1,59 @@
-export interface RouterDecision {
-  action: 'direct' | 'tool' | 'escalate';
-  answer?: string;
-  tool?: string;
-  params?: Record<string, unknown>;
-  confidence?: number;
+import { ClassificationResult, Intent } from '@/engines/router';
+
+const KNOWLEDGE_INTENTS: Set<string> = new Set([
+  'knowledge_weather', 'knowledge_country', 'knowledge_book',
+  'knowledge_paper', 'knowledge_dictionary', 'knowledge_currency',
+  'knowledge_holiday', 'knowledge_general',
+]);
+
+const TOOL_INTENTS: Set<string> = new Set([
+  'calendar_query', 'calendar_create', 'contact_lookup',
+  'reminder_create', 'reminder_list',
+  'memory_query', 'memory_forget',
+  'clipboard_read', 'clipboard_write', 'tts_speak',
+]);
+
+const DIRECT_INTENTS: Set<string> = new Set([
+  'time_query', 'battery_query', 'device_query',
+  'identity_query', 'limitations_query',
+]);
+
+export function isKnowledgeIntent(intent: string): boolean {
+  return KNOWLEDGE_INTENTS.has(intent);
 }
 
-const ESCALATE_PATTERNS: RegExp[] = [
-  /\b(?:write|compose|draft|create)\b.*\b(?:poem|story|song|letter|email|text|message|essay|article)\b/i,
-  /\b(?:help|assist)\s+me\s+(?:write|create|compose|draft|make|build)\b/i,
-  /\b(?:explain|describe|analyze|compare|contrast|evaluate|discuss)\b/i,
-  /\b(?:why|how)\s+(?:is|are|do|does|can|should|would|could|did)\b/i,
-  /\b(?:what|tell me)\s+(?:do you|is your)\s+(?:think|feel|believe|opinion)\b/i,
-  /\b(?:summarize|summarise|paraphrase|rewrite|rephrase|improve)\b/i,
-  /\b(?:recommend|suggest)\b/i,
-  /\b(?:opinion|perspective|viewpoint|stance)\b/i,
-  /\b(?:pros and cons|advantages|disadvantages)\b/i,
-  /\b(?:meaning of|philosophy|purpose of)\b/i,
-  /\btell me about\b/i,
-  /\b(?:what if|imagine|suppose)\b/i,
-];
+export function isToolIntent(intent: string): boolean {
+  return TOOL_INTENTS.has(intent);
+}
 
-const MAX_DIRECT_WORDS = 15;
+export function isDirectIntent(intent: string): boolean {
+  return DIRECT_INTENTS.has(intent);
+}
 
-export function validateRouterDecision(
-  decision: RouterDecision,
+export function validateClassification(
+  result: ClassificationResult,
   userMessage: string,
-): RouterDecision {
-  if (!decision || !decision.action) {
-    return { action: 'escalate' };
+): ClassificationResult {
+  if (!result || !result.intent) {
+    return { intent: 'chat', needs_brain: true };
   }
 
-  if (decision.action === 'escalate') {
-    return decision;
+  if (!VALID_INTENTS_SET.has(result.intent)) {
+    return { intent: 'chat', needs_brain: true };
   }
 
-  const wordCount = userMessage.trim().split(/\s+/).length;
-
-  if (wordCount > MAX_DIRECT_WORDS) {
-    return { action: 'escalate' };
-  }
-
-  for (const pattern of ESCALATE_PATTERNS) {
-    if (pattern.test(userMessage)) {
-      return { action: 'escalate' };
-    }
-  }
-
-  if (decision.action === 'direct') {
-    if (!decision.answer || decision.answer.trim().length === 0) {
-      return { action: 'escalate' };
-    }
-  }
-
-  if (decision.action === 'tool') {
-    if (!decision.tool || decision.tool.trim().length === 0) {
-      return { action: 'escalate' };
-    }
-  }
-
-  return decision;
+  return result;
 }
+
+const VALID_INTENTS_SET: Set<string> = new Set([
+  'time_query', 'battery_query', 'device_query',
+  'identity_query', 'limitations_query',
+  'calendar_query', 'calendar_create', 'contact_lookup',
+  'reminder_create', 'reminder_list',
+  'memory_query', 'memory_forget',
+  'clipboard_read', 'clipboard_write', 'tts_speak',
+  'knowledge_weather', 'knowledge_country', 'knowledge_book',
+  'knowledge_paper', 'knowledge_dictionary', 'knowledge_currency',
+  'knowledge_holiday', 'knowledge_general',
+  'factual_realtime', 'chat',
+]);

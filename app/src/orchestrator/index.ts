@@ -1,4 +1,3 @@
-import { classifyIntent, type Intent } from './intent-classifier';
 import { getFactualGuardResponse } from './factual-guard';
 import { getIdentityResponse } from './identity-handler';
 import { handleTimeQuery, handleBatteryQuery, handleDeviceQuery } from './device-handlers';
@@ -6,12 +5,15 @@ import { formatModelResponse, formatStreamingToken } from './response-formatter'
 import { executeTool, registerBuiltinTools } from './tool-registry';
 import { buildSystemState, formatSystemStateForPrompt } from './system-state';
 import { extractFacts } from './fact-extractor';
-import { validateRouterDecision, type RouterDecision } from './router-guardrails';
+import { validateClassification, isKnowledgeIntent, isToolIntent, isDirectIntent } from './router-guardrails';
+import { queryKnowledge, formatKnowledgeForBrain, type KnowledgeIntent } from '@/knowledge/hub';
+import { postProcessCitations } from '@/knowledge/formatter';
+import { type ClassificationResult, type Intent } from '@/engines/router';
 import { useAppStore } from '@/stores/app-store';
 
 export interface OrchestratorResult {
   response: string;
-  handledBy: 'factual_guard' | 'model' | 'memory' | 'system' | 'tool';
+  handledBy: 'factual_guard' | 'model' | 'memory' | 'system' | 'tool' | 'knowledge';
   intent: Intent;
   wasStreamed: boolean;
 }
@@ -20,16 +22,18 @@ export interface OrchestratorConfig {
   streamCompletion: (
     messages: Array<{ role: string; content: string }>,
     onToken: (token: string) => void,
+    systemPrompt?: string,
   ) => Promise<string>;
   isModelReady: () => boolean;
   isRouterReady: () => boolean;
-  routerClassify: (message: string) => Promise<RouterDecision>;
+  routerClassify: (message: string) => Promise<ClassificationResult>;
   swapToBrain: () => Promise<void>;
   swapToRouter: () => Promise<void>;
   llmExtractFacts: (userMsg: string, assistantMsg: string) => Promise<Array<{ fact: string; category: string; entity: string | null }>>;
+  knowledgeEnabled: () => boolean;
 }
 
-function sysResponse(response: string, intent: Intent, t0: number): OrchestratorResult {
+function sysResponse(response: string, intent: Intent): OrchestratorResult {
   return { response, handledBy: 'system', intent, wasStreamed: false };
 }
 
@@ -41,267 +45,325 @@ export function createOrchestrator(config: OrchestratorConfig) {
       userMessage: string,
       conversationHistory: Array<{ role: string; content: string }>,
       onToken?: (token: string) => void,
+      options?: { knowledgeActive?: boolean },
     ): Promise<OrchestratorResult> {
 
       const t0 = Date.now();
 
-      // ── 1. CLASSIFY ─────────────────────────────────────────────
-      const { intent } = classifyIntent(userMessage);
+      // ── 1. CLASSIFY (Router model or fallback to chat) ──────────
+
+      let classification: ClassificationResult;
+
+      if (config.isRouterReady()) {
+        const raw = await config.routerClassify(userMessage);
+        classification = validateClassification(raw, userMessage);
+      } else {
+        classification = { intent: 'chat', needs_brain: false };
+      }
+
+      const { intent, needs_brain } = classification;
       const t1 = Date.now();
+      console.log(`[Orchestrator] Intent: ${intent} | needs_brain: ${needs_brain} | classify: ${t1 - t0}ms`);
 
-      // ── 2. ROUTE: Direct handlers (0ms LLM) ────────────────────
+      // ── 2. ROUTE: Direct handlers (no model needed) ────────────
 
-      if (intent === 'time_query') {
-        return sysResponse(handleTimeQuery(userMessage), intent, t0);
-      }
+      if (intent === 'time_query') return sysResponse(handleTimeQuery(userMessage), intent);
+      if (intent === 'battery_query') return sysResponse(await handleBatteryQuery(), intent);
+      if (intent === 'device_query') return sysResponse(handleDeviceQuery(), intent);
+      if (intent === 'identity_query') return sysResponse(getIdentityResponse(intent)!, intent);
+      if (intent === 'limitations_query') return sysResponse(getIdentityResponse('limitations')!, intent);
 
-      if (intent === 'battery_query') {
-        return sysResponse(await handleBatteryQuery(), intent, t0);
-      }
-
-      if (intent === 'device_query') {
-        return sysResponse(handleDeviceQuery(), intent, t0);
-      }
-
-      if (intent === 'identity_query') {
-        return sysResponse(getIdentityResponse(intent)!, intent, t0);
-      }
-
-      if (intent === 'limitations_query') {
-        return sysResponse(getIdentityResponse('limitations')!, intent, t0);
-      }
-
-      // ── 3. ROUTE: Memory tools ─────────────────────────────────
-
-      if (intent === 'memory_query') {
-        const result = await executeTool('memory_query', { query: userMessage });
-        return { response: result.data, handledBy: 'memory', intent, wasStreamed: false };
-      }
-
-      if (intent === 'memory_forget') {
-        const result = await executeTool('memory_forget', { query: userMessage });
-        return {
-          response: result.success ? result.data : "I couldn't find that memory. Ask 'what do you remember about me?' to see stored memories.",
-          handledBy: 'memory',
-          intent,
-          wasStreamed: false,
-        };
-      }
-
-      // ── 3b. ROUTE: Clipboard tools ────────────────────────────────
-
-      if (intent === 'clipboard_read') {
-        const result = await executeTool('clipboard_read');
-        if (result.data === 'The clipboard is empty.') {
-          return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-        }
-        const hasSummarize = /\b(summarize|summarise|explain|what does|what does this mean)\b/i.test(userMessage);
-        if (hasSummarize && config.isModelReady()) {
-          const { SYSTEM_PROMPT } = await import('@/utils/system-prompt');
-          const messages = [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `I copied this text. Please summarize or explain it:\n\n${result.data}` },
-          ];
-          try {
-            let raw = '';
-            raw = await config.streamCompletion(messages, onToken ? (t) => { const c = formatStreamingToken(t); if (c) onToken(c); } : () => {});
-            const { response } = formatModelResponse(raw);
-            return { response, handledBy: 'model', intent, wasStreamed: true };
-          } catch {
-            return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-          }
-        }
-        return { response: `Here's what's on your clipboard:\n\n${result.data}`, handledBy: 'tool', intent, wasStreamed: false };
-      }
-
-      if (intent === 'clipboard_write') {
-        const history = conversationHistory;
-        let lastAssistantMsg = '';
-        for (let i = history.length - 1; i >= 0; i--) {
-          if (history[i].role === 'assistant') {
-            lastAssistantMsg = history[i].content;
-            break;
-          }
-        }
-        const textToCopy = lastAssistantMsg || userMessage.replace(/\bcopy\s+/i, '').replace(/\bto\s+clipboard\b/i, '').trim();
-        const result = await executeTool('clipboard_write', { text: textToCopy });
-        return { response: result.success ? "Done! I've copied that to your clipboard." : result.data, handledBy: 'tool', intent, wasStreamed: false };
-      }
-
-      // ── 3c. ROUTE: TTS tool ───────────────────────────────────────
-
-      if (intent === 'tts_speak') {
-        const history = conversationHistory;
-        let lastAssistantMsg = '';
-        for (let i = history.length - 1; i >= 0; i--) {
-          if (history[i].role === 'assistant') {
-            lastAssistantMsg = history[i].content;
-            break;
-          }
-        }
-        if (!lastAssistantMsg) {
-          return { response: "I don't have a previous response to read back yet!", handledBy: 'tool', intent, wasStreamed: false };
-        }
-        const result = await executeTool('tts_speak', { text: lastAssistantMsg });
-        return { response: result.success ? "Reading it back to you now..." : result.data, handledBy: 'tool', intent, wasStreamed: false };
-      }
-
-      // ── 3d. ROUTE: Calendar tools ─────────────────────────────────
-
-      if (intent === 'calendar_query') {
-        const days = /\b(?:upcoming|next|this\s+week)\b/i.test(userMessage) ? 7 : 0;
-        const result = await executeTool('calendar_query', { days });
-        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-      }
-
-      if (intent === 'calendar_create') {
-        const titleMatch = userMessage.match(/(?:meeting|event|appointment)(?:\s+(?:with|for|about))?\s+(.+?)(?:\s+(?:tomorrow|today|at|on|next)\b|$)/i);
-        const title = titleMatch?.[1]?.trim() || userMessage.replace(/^(?:add|create|schedule|put)\s+(?:a\s+)?/i, '').trim();
-
-        const timeStr = extractTimeFromMessage(userMessage);
-        if (!timeStr) {
-          return { response: "I'd love to create that event, but I need to know when. Can you tell me the date and time? For example: 'Add meeting with Sarah tomorrow at 3pm'", handledBy: 'tool', intent, wasStreamed: false };
-        }
-
-        const result = await executeTool('calendar_create', { title, startDate: timeStr.toISOString(), durationMinutes: 60 });
-        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-      }
-
-      // ── 3e. ROUTE: Contacts tool ───────────────────────────────────
-
-      if (intent === 'contact_lookup') {
-        const nameMatch = userMessage.match(/(?:phone|number|email|birthday|contact|info)\s+(?:for|of|is\s+)?\s*(\w+(?:\s+\w+)?)/i)
-          || userMessage.match(/(\w+)'s\s+(?:phone|number|email|birthday|contact)/i);
-        const name = nameMatch?.[1]?.trim() || '';
-        if (!name) {
-          return { response: "Who should I look up? Tell me a name and I'll search your contacts.", handledBy: 'tool', intent, wasStreamed: false };
-        }
-        const result = await executeTool('contact_lookup', { name });
-        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-      }
-
-      // ── 3f. ROUTE: Reminders tools ─────────────────────────────────
-
-      if (intent === 'reminder_create') {
-        const textMatch = userMessage.match(/remind\s+me\s+(?:to|about)\s+(.+?)(?:\s+(?:at|in|by|on)\b|$)/i)
-          || userMessage.match(/(?:set\s+(?:a\s+)?reminder|notify\s+me)\s+(?:to|about)?\s*(.+?)(?:\s+(?:at|in|by|on)\b|$)/i);
-        const text = textMatch?.[1]?.trim() || '';
-        const timeMatch = userMessage.match(/(?:at|in|by)\s+(.+?)$/i);
-        const timeStr = timeMatch?.[1]?.trim() || '';
-
-        if (!text) {
-          return { response: "What should I remind you about? Try: 'Remind me to call mom at 5pm'", handledBy: 'tool', intent, wasStreamed: false };
-        }
-        if (!timeStr) {
-          return { response: "When should I remind you? Try: 'Remind me to call mom at 5pm' or 'Remind me to buy milk in 30 minutes'", handledBy: 'tool', intent, wasStreamed: false };
-        }
-
-        const result = await executeTool('reminder_create', { text, time: timeStr });
-        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-      }
-
-      if (intent === 'reminder_list') {
-        const result = await executeTool('reminder_list');
-        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-      }
-
-      // ── 4. ROUTE: Factual guard (until web search) ─────────────
+      // ── 3. ROUTE: Factual guard ────────────────────────────────
 
       if (intent === 'factual_realtime') {
         const online = useAppStore.getState().isOnline;
         return { response: getFactualGuardResponse(userMessage, online), handledBy: 'factual_guard', intent, wasStreamed: false };
       }
 
-      // ── 4b. ROUTE: 350M Router (classifier-only, guarded) ──────
+      // ── 4. ROUTE: Knowledge Hub ────────────────────────────────
 
-      if (intent === 'chat' && config.isRouterReady()) {
-        try {
-          const rawDecision = await config.routerClassify(userMessage);
-          const decision = validateRouterDecision(rawDecision, userMessage);
-          console.log(`[Orchestrator] Router: raw=${rawDecision.action} guarded=${decision.action}`);
+      const knowledgeAllowed = options?.knowledgeActive ?? config.knowledgeEnabled();
 
-          if (decision.action === 'direct' && decision.answer) {
-            autoExtractFacts(userMessage, decision.answer);
-            return { response: decision.answer, handledBy: 'system', intent, wasStreamed: false };
-          }
-
-          if (decision.action === 'tool' && decision.tool) {
-            try {
-              const result = await executeTool(decision.tool, decision.params ?? {});
-              autoExtractFacts(userMessage, result.data);
-              return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-            } catch {
-              // Tool execution failed, fall through to Brain
-            }
-          }
-        } catch (e) {
-          console.warn('[Orchestrator] Router failed, falling back to Brain:', e);
-        }
+      if (isKnowledgeIntent(intent) && knowledgeAllowed) {
+        return await handleKnowledge(intent as KnowledgeIntent, userMessage, conversationHistory, onToken, needs_brain, config, t0);
       }
 
-      // ── 5. REASON: Complex query → Brain with system state ─────
+      // ── 5. ROUTE: Tool calls ───────────────────────────────────
 
-      if (!config.isModelReady()) {
-        return { response: "I'm still loading up — give me a moment and try again!", handledBy: 'model', intent, wasStreamed: false };
+      if (isToolIntent(intent)) {
+        return await handleTool(intent, userMessage, conversationHistory, onToken, needs_brain, config, t0);
       }
 
-      let relevantMemories: Array<{ fact: string; category: string | null; entity: string | null }> = [];
-      let totalMemoryCount = 0;
-      const t2 = t1;
+      // ── 6. ROUTE: Brain (complex reasoning) ────────────────────
 
-      try {
-        const { memoryEngine } = await import('@/engines/memory');
-        relevantMemories = (await memoryEngine.findSimilar(userMessage)).map(m => ({
-          fact: m.fact,
-          category: m.category,
-          entity: m.entity,
-        }));
-        const allMems = await memoryEngine.getAllMemories();
-        totalMemoryCount = allMems.length;
-      } catch (e) {
-        console.warn('[Orchestrator] Memory search skipped:', e);
-      }
-
-      const t3 = Date.now();
-      const systemState = await buildSystemState(relevantMemories, totalMemoryCount);
-      const stateString = formatSystemStateForPrompt(systemState);
-
-      const { SYSTEM_PROMPT } = await import('@/utils/system-prompt');
-      const systemPrompt = SYSTEM_PROMPT + '\n\n[SYSTEM STATE]\n' + stateString + '\n[/SYSTEM STATE]';
-
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        ...conversationHistory,
-        { role: 'user', content: userMessage },
-      ];
-
-      let rawResponse = '';
-      const streamCallback = onToken
-        ? (token: string) => {
-            const cleanToken = formatStreamingToken(token);
-            if (cleanToken) onToken(cleanToken);
-          }
-        : (_token: string) => {};
-
-      try {
-        rawResponse = await config.streamCompletion(messages, streamCallback);
-      } catch (error) {
-        console.error('[Orchestrator] LLM completion failed:', error);
-        return { response: "Something went wrong. Could you try again?", handledBy: 'model', intent, wasStreamed: false };
-      }
-
-      const t4 = Date.now();
-      const { response } = formatModelResponse(rawResponse);
-
-      // ── 6. LEARN: Auto-extract facts from the conversation ─────
-      autoExtractFacts(userMessage, response, config.llmExtractFacts);
-
-      const t5 = Date.now();
-      console.log(`[Orchestrator] Timing: classify=${t1 - t0}ms mem=${t3 - t2}ms state=${t4 - t3}ms llm+format=${t5 - t4}ms total=${t5 - t0}ms intent=${intent}`);
-
-      return { response, handledBy: 'model', intent, wasStreamed: true };
+      return await handleBrain(userMessage, conversationHistory, onToken, config, t0);
     },
   };
+}
+
+async function handleKnowledge(
+  intent: KnowledgeIntent,
+  userMessage: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+  onToken: ((token: string) => void) | undefined,
+  needsBrain: boolean,
+  config: OrchestratorConfig,
+  t0: number,
+): Promise<OrchestratorResult> {
+  try {
+    const knowledgeResponse = await queryKnowledge(intent, userMessage);
+
+    if (knowledgeResponse.results.length === 0) {
+      if (config.isModelReady()) {
+        return await handleBrain(userMessage, conversationHistory, onToken, config, t0);
+      }
+      return sysResponse("I couldn't find information on that. Try rephrasing your question.", intent);
+    }
+
+    if (!needsBrain) {
+      const formatted = formatKnowledgeForBrain(knowledgeResponse.results, userMessage);
+      const simpleResponse = knowledgeResponse.results
+        .map((r, i) => `${r.content}`)
+        .join('\n\n');
+      autoExtractFacts(userMessage, simpleResponse, config.llmExtractFacts);
+      return { response: simpleResponse, handledBy: 'knowledge', intent, wasStreamed: false };
+    }
+
+    if (!config.isModelReady()) {
+      const simpleResponse = knowledgeResponse.results.map(r => r.content).join('\n\n');
+      return { response: simpleResponse, handledBy: 'knowledge', intent, wasStreamed: false };
+    }
+
+    const formatted = formatKnowledgeForBrain(knowledgeResponse.results, userMessage);
+    const brainResponse = await runBrain(
+      formatted.text,
+      userMessage,
+      conversationHistory,
+      onToken,
+      config,
+    );
+
+    const finalResponse = postProcessCitations(brainResponse, formatted.sources);
+    autoExtractFacts(userMessage, finalResponse, config.llmExtractFacts);
+
+    const t5 = Date.now();
+    console.log(`[Orchestrator] Knowledge+Brain total: ${t5 - t0}ms`);
+    return { response: finalResponse, handledBy: 'knowledge', intent, wasStreamed: true };
+  } catch (e) {
+    console.warn('[Orchestrator] Knowledge failed, falling back to Brain:', e);
+    return await handleBrain(userMessage, conversationHistory, onToken, config, t0);
+  }
+}
+
+async function handleTool(
+  intent: Intent,
+  userMessage: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+  onToken: ((token: string) => void) | undefined,
+  needsBrain: boolean,
+  config: OrchestratorConfig,
+  t0: number,
+): Promise<OrchestratorResult> {
+  if (intent === 'memory_query') {
+    const result = await executeTool('memory_query', { query: userMessage });
+    return { response: result.data, handledBy: 'memory', intent, wasStreamed: false };
+  }
+
+  if (intent === 'memory_forget') {
+    const result = await executeTool('memory_forget', { query: userMessage });
+    return {
+      response: result.success ? result.data : "I couldn't find that memory.",
+      handledBy: 'memory',
+      intent,
+      wasStreamed: false,
+    };
+  }
+
+  if (intent === 'clipboard_read') {
+    const result = await executeTool('clipboard_read');
+    if (result.data === 'The clipboard is empty.') {
+      return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+    }
+    const hasSummarize = /\b(summarize|summarise|explain|what does|what does this mean)\b/i.test(userMessage);
+    if (hasSummarize && config.isModelReady()) {
+      const brainResponse = await runBrain(
+        `I copied this text. Please summarize or explain it:\n\n${result.data}`,
+        userMessage, conversationHistory, onToken, config,
+      );
+      return { response: brainResponse, handledBy: 'model', intent, wasStreamed: true };
+    }
+    return { response: `Here's what's on your clipboard:\n\n${result.data}`, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  if (intent === 'clipboard_write') {
+    let lastAssistantMsg = '';
+    for (let i = conversationHistory.length - 1; i >= 0; i--) {
+      if (conversationHistory[i].role === 'assistant') {
+        lastAssistantMsg = conversationHistory[i].content;
+        break;
+      }
+    }
+    const textToCopy = lastAssistantMsg || userMessage.replace(/\bcopy\s+/i, '').replace(/\bto\s+clipboard\b/i, '').trim();
+    const result = await executeTool('clipboard_write', { text: textToCopy });
+    return { response: result.success ? "Done! I've copied that to your clipboard." : result.data, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  if (intent === 'tts_speak') {
+    let lastAssistantMsg = '';
+    for (let i = conversationHistory.length - 1; i >= 0; i--) {
+      if (conversationHistory[i].role === 'assistant') {
+        lastAssistantMsg = conversationHistory[i].content;
+        break;
+      }
+    }
+    if (!lastAssistantMsg) {
+      return sysResponse("I don't have a previous response to read back yet!", intent);
+    }
+    const result = await executeTool('tts_speak', { text: lastAssistantMsg });
+    return { response: result.success ? "Reading it back to you now..." : result.data, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  if (intent === 'calendar_query') {
+    const days = /\b(?:upcoming|next|this\s+week)\b/i.test(userMessage) ? 7 : 0;
+    const result = await executeTool('calendar_query', { days });
+    if (needsBrain && config.isModelReady()) {
+      const brainResponse = await runBrain(
+        `Based on this calendar data: ${result.data}\n\nAnswer the user's question.`,
+        userMessage, conversationHistory, onToken, config,
+      );
+      return { response: brainResponse, handledBy: 'model', intent, wasStreamed: true };
+    }
+    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  if (intent === 'calendar_create') {
+    const titleMatch = userMessage.match(/(?:meeting|event|appointment)(?:\s+(?:with|for|about))?\s+(.+?)(?:\s+(?:tomorrow|today|at|on|next)\b|$)/i);
+    const title = titleMatch?.[1]?.trim() || userMessage.replace(/^(?:add|create|schedule|put)\s+(?:a\s+)?/i, '').trim();
+    const timeStr = extractTimeFromMessage(userMessage);
+    if (!timeStr) {
+      return { response: "I'd love to create that event, but I need to know when. Try: 'Add meeting with Sarah tomorrow at 3pm'", handledBy: 'tool', intent, wasStreamed: false };
+    }
+    const result = await executeTool('calendar_create', { title, startDate: timeStr.toISOString(), durationMinutes: 60 });
+    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  if (intent === 'contact_lookup') {
+    const nameMatch = userMessage.match(/(?:phone|number|email|birthday|contact|info)\s+(?:for|of|is\s+)?\s*(\w+(?:\s+\w+)?)/i)
+      || userMessage.match(/(\w+)'s\s+(?:phone|number|email|birthday|contact)/i);
+    const name = nameMatch?.[1]?.trim() || '';
+    if (!name) {
+      return { response: "Who should I look up? Tell me a name and I'll search your contacts.", handledBy: 'tool', intent, wasStreamed: false };
+    }
+    const result = await executeTool('contact_lookup', { name });
+    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  if (intent === 'reminder_create') {
+    const textMatch = userMessage.match(/remind\s+me\s+(?:to|about)\s+(.+?)(?:\s+(?:at|in|by|on)\b|$)/i)
+      || userMessage.match(/(?:set\s+(?:a\s+)?reminder|notify\s+me)\s+(?:to|about)?\s*(.+?)(?:\s+(?:at|in|by|on)\b|$)/i);
+    const text = textMatch?.[1]?.trim() || '';
+    const timeMatch = userMessage.match(/(?:at|in|by)\s+(.+?)$/i);
+    const timeStr = timeMatch?.[1]?.trim() || '';
+    if (!text) return { response: "What should I remind you about?", handledBy: 'tool', intent, wasStreamed: false };
+    if (!timeStr) return { response: "When should I remind you? Try: 'Remind me to call mom at 5pm'", handledBy: 'tool', intent, wasStreamed: false };
+    const result = await executeTool('reminder_create', { text, time: timeStr });
+    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  if (intent === 'reminder_list') {
+    const result = await executeTool('reminder_list');
+    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  return sysResponse("I'm not sure how to handle that.", intent);
+}
+
+async function handleBrain(
+  userMessage: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+  onToken: ((token: string) => void) | undefined,
+  config: OrchestratorConfig,
+  t0: number,
+): Promise<OrchestratorResult> {
+  if (!config.isModelReady()) {
+    return sysResponse("I'm still loading up — give me a moment and try again!", 'chat');
+  }
+
+  let relevantMemories: Array<{ fact: string; category: string | null; entity: string | null }> = [];
+  let totalMemoryCount = 0;
+  const t2 = Date.now();
+
+  try {
+    const { memoryEngine } = await import('@/engines/memory');
+    relevantMemories = (await memoryEngine.findSimilar(userMessage)).map(m => ({
+      fact: m.fact, category: m.category, entity: m.entity,
+    }));
+    const allMems = await memoryEngine.getAllMemories();
+    totalMemoryCount = allMems.length;
+  } catch (e) {
+    console.warn('[Orchestrator] Memory search skipped:', e);
+  }
+
+  const t3 = Date.now();
+  const systemState = await buildSystemState(relevantMemories, totalMemoryCount);
+  const stateString = formatSystemStateForPrompt(systemState);
+
+  const { SYSTEM_PROMPT } = await import('@/utils/system-prompt');
+  const systemPrompt = SYSTEM_PROMPT + '\n\n[SYSTEM STATE]\n' + stateString + '\n[/SYSTEM STATE]';
+
+  const brainResponse = await runBrain(
+    null, userMessage, conversationHistory, onToken, config, systemPrompt,
+  );
+
+  autoExtractFacts(userMessage, brainResponse, config.llmExtractFacts);
+
+  const t5 = Date.now();
+  console.log(`[Orchestrator] Brain total: ${t5 - t0}ms`);
+
+  return { response: brainResponse, handledBy: 'model', intent: 'chat', wasStreamed: true };
+}
+
+async function runBrain(
+  contextOrInstruction: string | null,
+  userMessage: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+  onToken: ((token: string) => void) | undefined,
+  config: OrchestratorConfig,
+  customSystemPrompt?: string,
+): Promise<string> {
+  const messages: Array<{ role: string; content: string }> = [];
+
+  if (customSystemPrompt) {
+    messages.push({ role: 'system', content: customSystemPrompt });
+  }
+
+  for (const msg of conversationHistory) {
+    messages.push(msg);
+  }
+
+  if (contextOrInstruction && contextOrInstruction !== customSystemPrompt) {
+    messages.push({ role: 'user', content: `${contextOrInstruction}\n\nUser: ${userMessage}` });
+  } else {
+    messages.push({ role: 'user', content: userMessage });
+  }
+
+  let rawResponse = '';
+  const streamCallback = onToken
+    ? (token: string) => {
+        const cleanToken = formatStreamingToken(token);
+        if (cleanToken) onToken(cleanToken);
+      }
+    : (_token: string) => {};
+
+  try {
+    rawResponse = await config.streamCompletion(messages, streamCallback, customSystemPrompt);
+  } catch (error) {
+    console.error('[Orchestrator] LLM completion failed:', error);
+    return "Something went wrong. Could you try again?";
+  }
+
+  const { response } = formatModelResponse(rawResponse);
+  return response;
 }
 
 type FactExtractorFn = (userMsg: string, assistantMsg: string) => Promise<Array<{ fact: string; category: string; entity: string | null }>>;

@@ -10,17 +10,46 @@ const ROUTER_CONFIG = {
   use_mmap: true,
   cache_type_k: 'q8_0',
   cache_type_v: 'q8_0',
-  max_tokens: 256,
+  max_tokens: 128,
   temperature: 0.1,
   top_k: 10,
   penalty_repeat: 1.05,
 } as const;
 
-export interface RouterDecision {
-  action: 'direct' | 'tool' | 'escalate';
-  answer?: string;
-  tool?: string;
-  params?: Record<string, unknown>;
+export type Intent =
+  | 'time_query' | 'battery_query' | 'device_query'
+  | 'identity_query' | 'limitations_query'
+  | 'calendar_query' | 'calendar_create'
+  | 'contact_lookup'
+  | 'reminder_create' | 'reminder_list'
+  | 'memory_query' | 'memory_forget'
+  | 'clipboard_read' | 'clipboard_write'
+  | 'tts_speak'
+  | 'knowledge_weather' | 'knowledge_country' | 'knowledge_book'
+  | 'knowledge_paper' | 'knowledge_dictionary' | 'knowledge_currency'
+  | 'knowledge_holiday' | 'knowledge_general'
+  | 'factual_realtime'
+  | 'chat';
+
+export const VALID_INTENTS: Set<string> = new Set<Intent>([
+  'time_query', 'battery_query', 'device_query',
+  'identity_query', 'limitations_query',
+  'calendar_query', 'calendar_create',
+  'contact_lookup',
+  'reminder_create', 'reminder_list',
+  'memory_query', 'memory_forget',
+  'clipboard_read', 'clipboard_write',
+  'tts_speak',
+  'knowledge_weather', 'knowledge_country', 'knowledge_book',
+  'knowledge_paper', 'knowledge_dictionary', 'knowledge_currency',
+  'knowledge_holiday', 'knowledge_general',
+  'factual_realtime',
+  'chat',
+]);
+
+export interface ClassificationResult {
+  intent: Intent;
+  needs_brain: boolean;
 }
 
 export const routerEngine = {
@@ -46,9 +75,9 @@ export const routerEngine = {
     }
   },
 
-  async classify(userMessage: string): Promise<RouterDecision> {
+  async classify(userMessage: string): Promise<ClassificationResult> {
     if (!this.context) {
-      return { action: 'escalate' };
+      return { intent: 'chat', needs_brain: false };
     }
 
     const prompt = `<|im_start|>system\n${ROUTER_SYSTEM_PROMPT}<|im_end|>\n<|im_start|>user\n${userMessage}<|im_end|>\n<|im_start|>assistant\n`;
@@ -67,10 +96,10 @@ export const routerEngine = {
       );
 
       const text = result.text.trim();
-      return parseRouterOutput(text);
+      return parseClassification(text);
     } catch (error) {
       console.error('[RouterEngine] Classification error:', error);
-      return { action: 'escalate' };
+      return { intent: 'chat', needs_brain: false };
     }
   },
 
@@ -112,34 +141,24 @@ export const routerEngine = {
   },
 };
 
-function parseRouterOutput(text: string): RouterDecision {
+function parseClassification(text: string): ClassificationResult {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    return { action: 'escalate' };
+    return { intent: 'chat', needs_brain: false };
   }
 
   try {
     const parsed = JSON.parse(jsonMatch[0]);
-    const action = parsed.action;
+    const intent = String(parsed.intent ?? 'chat');
+    const needsBrain = parsed.needs_brain === true;
 
-    if (action === 'escalate') return { action: 'escalate' };
-    if (action === 'tool' && parsed.tool) {
-      return {
-        action: 'tool',
-        tool: String(parsed.tool),
-        params: parsed.params ?? {},
-      };
-    }
-    if (action === 'direct' && parsed.answer) {
-      return {
-        action: 'direct',
-        answer: String(parsed.answer),
-      };
+    if (VALID_INTENTS.has(intent)) {
+      return { intent: intent as Intent, needs_brain: needsBrain };
     }
 
-    return { action: 'escalate' };
+    return { intent: 'chat', needs_brain: false };
   } catch {
-    return { action: 'escalate' };
+    return { intent: 'chat', needs_brain: false };
   }
 }
 
