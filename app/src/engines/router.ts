@@ -3,7 +3,7 @@ import { ROUTER_SYSTEM_PROMPT } from '@/prompts/router-prompt';
 import { EXTRACTOR_SYSTEM_PROMPT } from '@/prompts/extractor-prompt';
 
 const ROUTER_CONFIG = {
-  n_ctx: 1024,
+  n_ctx: 2048,
   n_gpu_layers: 99,
   n_batch: 256,
   use_mlock: true,

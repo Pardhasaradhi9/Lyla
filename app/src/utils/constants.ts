@@ -38,7 +38,7 @@ export const MODELS = {
 
 /** Router model inference parameters (350M) */
 export const ROUTER_CONFIG = {
-  n_ctx: 1024,
+  n_ctx: 2048,
   n_gpu_layers: 99,
   n_batch: 256,
   use_mlock: true,
