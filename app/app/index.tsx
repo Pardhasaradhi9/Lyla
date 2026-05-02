@@ -43,32 +43,7 @@ export default function HomeScreen() {
     });
   }, []);
 
-  // Load the most recent conversation on startup
-  useEffect(() => {
-    const loadLastConversation = async () => {
-      try {
-        const conversations = await chatRepository.getConversations(1);
-        if (conversations.length > 0) {
-          const lastConvo = conversations[0];
-          const dbMessages = await chatRepository.getMessages(lastConvo.id);
-          const msgs: Message[] = dbMessages.map(m => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            createdAt: m.created_at,
-          }));
-          loadConversation(lastConvo.id, msgs);
-          if (__DEV__) {
-            console.log(`[Chat] Loaded conversation ${lastConvo.id} with ${msgs.length} messages`);
-          }
-        }
-      } catch (e) {
-        console.log('[Chat] No previous conversation to load');
-      }
-    };
-    const timer = setTimeout(loadLastConversation, 500);
-    return () => clearTimeout(timer);
-  }, [loadConversation]);
+
 
   // ── Initialization ────────────────────────────────────────────────
   useEffect(() => {
@@ -180,7 +155,7 @@ export default function HomeScreen() {
       const historyMessages = currentMessages
         .filter(m => m.id !== assistantMsgId && m.id !== userMsgId && m.role !== 'system');
 
-      const MAX_CONTEXT_CHARS = 12000;
+      const MAX_CONTEXT_CHARS = 6000;
       let totalChars = 0;
       const trimmedHistory: typeof historyMessages = [];
       for (let i = historyMessages.length - 1; i >= 0; i--) {
@@ -304,7 +279,9 @@ export default function HomeScreen() {
 
       try {
         const { memoryEngine } = require('@/engines/memory');
-        await memoryEngine.addMemory(content);
+        const { extractFactOrRaw } = require('@/orchestrator/fact-extractor');
+        const extracted = extractFactOrRaw(content);
+        await memoryEngine.addMemory(extracted.fact, extracted.entity || undefined, extracted.category);
         setMemorySaved(true);
         if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
         feedbackTimerRef.current = setTimeout(() => setMemorySaved(false), 2000);

@@ -67,19 +67,28 @@ export const llmEngine: LLMEngine = {
     }
     prompt += '<|im_start|>assistant\n';
 
-    const result = await this.context.completion(
-      {
-        prompt,
-        n_predict: LLM_CONFIG.max_tokens,
-        temperature: LLM_CONFIG.temperature,
-        top_k: LLM_CONFIG.top_k,
-        repeat_penalty: LLM_CONFIG.repeat_penalty,
-        stop: ['<|im_end|>', '<|im_start|>'],
-      },
-      (data) => {
-        onToken(data.token);
+    let result;
+    try {
+      result = await this.context.completion(
+        {
+          prompt,
+          n_predict: LLM_CONFIG.max_tokens,
+          temperature: LLM_CONFIG.temperature,
+          top_k: LLM_CONFIG.top_k,
+          penalty_repeat: LLM_CONFIG.repeat_penalty,
+          stop: ['<|im_end|>', '<|im_start|>'],
+        },
+        (data) => {
+          onToken(data.token);
+        }
+      );
+    } catch (error) {
+      console.error('[LLMEngine] Completion error:', error);
+      if (error instanceof Error && (error.message.includes('context') || error.message.includes('memory') || error.message.includes('OOM'))) {
+        return "I'm running low on context. Let's start a new conversation.";
       }
-    );
+      throw error;
+    }
 
     return result.text;
   },

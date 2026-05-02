@@ -1,410 +1,251 @@
-# Lyla — Master Implementation Plan
+# Implementation Plan — Lyla Phase 2
 
-> **Read context/ folder files FIRST before starting any phase.**
-> See: PROJECT_IDENTITY.md, DECISIONS.md, TECH_STACK.md, PROGRESS.md
-
----
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    LYLA APP (React Native)            │
-├─────────────────────────────────────────────────────┤
-│  UI Layer (Expo Router + Reanimated + Zustand)       │
-├─────────────────────────────────────────────────────┤
-│  Orchestrator (TypeScript)                           │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │ Chat     │ │ Memory   │ │ Search   │ │ Voice  │ │
-│  │ Engine   │ │ Engine   │ │ Router   │ │ Engine │ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
-├───────┼────────────┼────────────┼────────────┼──────┤
-│  Native Layer                                        │
-│  ┌────┴─────┐ ┌────┴─────┐ ┌────┴─────┐ ┌───┴────┐ │
-│  │ llama.rn │ │ op-sqlite│ │  fetch   │ │whisper │ │
-│  │ (LLM)    │ │+sqlite-vec│ │(DDG)    │ │.rn+TTS │ │
-│  └──────────┘ └──────────┘ └──────────┘ └────────┘ │
-├─────────────────────────────────────────────────────┤
-│  On-Device Storage                                   │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐            │
-│  │ Models/  │ │ lyla.db  │ │ prefs    │            │
-│  │ *.gguf   │ │ (SQLite) │ │ (async)  │            │
-│  └──────────┘ └──────────┘ └──────────┘            │
-└─────────────────────────────────────────────────────┘
-```
-
-## Folder Structure (Target)
-
-```
-Lyla/
-├── context/                          # Project docs (already created)
-├── research/                         # User research (already exists)
-└── app/                              # React Native project root
-    ├── app/                          # Expo Router screens
-    │   ├── _layout.tsx               # Root layout (navigation)
-    │   ├── index.tsx                 # Home / Chat screen
-    │   ├── settings.tsx              # Settings screen
-    │   ├── history.tsx               # Chat history list
-    │   └── onboarding.tsx            # First-launch onboarding
-    ├── src/
-    │   ├── engines/
-    │   │   ├── llm.ts                # llama.rn wrapper (init, complete, stream)
-    │   │   ├── memory.ts             # Memory extraction, storage, retrieval
-    │   │   ├── embeddings.ts         # Embedding model wrapper
-    │   │   ├── search.ts             # DuckDuckGo search + HTML parsing
-    │   │   ├── stt.ts                # whisper.rn wrapper
-    │   │   └── tts.ts                # expo-speech wrapper
-    │   ├── db/
-    │   │   ├── database.ts           # SQLite init, migrations
-    │   │   ├── chat-repository.ts    # Chat CRUD operations
-    │   │   └── memory-repository.ts  # Memory CRUD + vector search
-    │   ├── stores/
-    │   │   ├── chat-store.ts         # Zustand: active chat state
-    │   │   ├── app-store.ts          # Zustand: app-wide state (model loaded, online, etc.)
-    │   │   └── settings-store.ts     # Zustand: user preferences
-    │   ├── components/
-    │   │   ├── ChatBubble.tsx         # Message bubble (user/assistant)
-    │   │   ├── ChatInput.tsx          # Text input + mic + send button
-    │   │   ├── ModelLoader.tsx        # Model download/loading progress
-    │   │   ├── MemoryPanel.tsx        # View/edit/delete memories
-    │   │   ├── ThinkingIndicator.tsx  # "Thinking..." animation
-    │   │   └── VoiceButton.tsx        # Push-to-talk mic button
-    │   ├── prompts/
-    │   │   ├── system.ts             # Main system prompt
-    │   │   ├── memory-extract.ts     # Prompt to extract facts as JSON
-    │   │   └── search-query.ts       # Prompt to generate search queries
-    │   ├── utils/
-    │   │   ├── network.ts            # Online/offline detection
-    │   │   ├── model-manager.ts      # Download, cache, switch models
-    │   │   └── constants.ts          # App-wide constants
-    │   └── theme/
-    │       ├── colors.ts             # Color palette
-    │       ├── typography.ts         # Font definitions
-    │       └── spacing.ts            # Spacing scale
-    ├── assets/                       # Static assets (icons, fonts)
-    ├── app.json                      # Expo config
-    ├── tsconfig.json
-    └── package.json
-```
+> **Read context/ folder FIRST.** Start with ARCHITECTURE.md.
+> Last Updated: 2026-05-02
 
 ---
 
-## Phase 1: Project Setup (Week 1)
+## Phase 2a: Bug Fixes + Orchestrator Rearchitecture (JS-only)
 
-### Step 1.1: Initialize React Native Project
+**No native rebuild required.** All changes are TypeScript.
+
+### Step 1: Fix Known Bugs
+
+**BUG-004: App reopens with last chat**
+- File: `app/index.tsx`
+- Fix: Remove `loadLastConversation` useEffect on mount. Start fresh every time.
+- Keep: History screen still shows all past conversations.
+
+**BUG-005: Context overflow crash**
+- Files: `app/index.tsx`, `src/engines/llm.ts`
+- Fix: Lower `MAX_CONTEXT_CHARS` from 12000 → 6000. Add try-catch in `llm.ts:complete()`. Catch OOM/context overflow and return graceful error.
+
+**BUG-006: Memory query dumps raw messages**
+- File: `src/orchestrator/index.ts`
+- Fix: Change `memory_query` intent to use `findSimilar()` instead of `getAllMemories()`. Embed the user's query, return top-K relevant memories.
+
+**BUG-007: Memory saves raw text**
+- File: New `src/orchestrator/fact-extractor.ts`
+- Fix: Add regex-based fact extractor before saving. Extract entity, category from patterns like "my X is Y", "I love X", "X is my Y". Save structured facts, not raw text.
+
+**BUG-008: Slowdown after long conversation**
+- Already fixed by BUG-005 (lower context). Add context usage logging.
+
+### Step 2: Rearchitect Orchestrator
+
+**Create System State Object**
+- File: New `src/orchestrator/system-state.ts`
+- Aggregate: time, battery, device, network, memories, calendar (when available)
+- Refresh on every message
+- Available to both Router and Brain
+
+**Create Tool Registry**
+- File: New `src/orchestrator/tool-registry.ts`
+- Each tool: `{ name, description, parameters, execute, requiresPermission }`
+- Start with existing tools: time_query, battery_query, device_query, memory_save, memory_query, memory_forget
+- Tools are self-describing — Router/Brain read descriptions to decide when to use them
+
+**Rewrite Orchestrator Loop**
+- File: `src/orchestrator/index.ts`
+- New flow: Classify → Route → Execute → Reason → Respond → Learn
+- Simple intents: handle directly (no LLM)
+- Tool calls: execute tool, format result
+- Complex: send to Brain with full system state
+- Always: auto-extract facts after each exchange
+
+### Step 3: Test on Device
+- All bug fixes verified
+- Orchestrator routes correctly
+- Memory saves structured facts
+- Context overflow handled gracefully
+
+---
+
+## Phase 2b: Batch Native Package Install (One Rebuild)
+
+**Install all native packages at once, rebuild once.**
+
+### Step 1: Install Packages
+
 ```bash
-cd /Users/pardhasaradhichukka/Desktop/Lyla
-npx create-expo-app@latest app --template blank-typescript
 cd app
+npx expo install expo-local-authentication expo-calendar expo-contacts expo-secure-store expo-notifications expo-task-manager expo-background-fetch expo-crypto
 ```
 
-### Step 1.2: Enable New Architecture
-Edit `app.json`:
-```json
-{
-  "expo": {
-    "newArchEnabled": true,
-    "plugins": ["expo-router"]
-  }
-}
-```
+### Step 2: Configure app.json Plugins
 
-### Step 1.3: Install Core Dependencies
+Add permission strings for each package:
+- `expo-local-authentication`: NSFaceIDUsageDescription
+- `expo-calendar`: NSCalendarsUsageDescription
+- `expo-contacts`: NSContactsUsageDescription
+
+### Step 3: Rebuild
+
 ```bash
-# Navigation
-npx expo install expo-router expo-linking expo-constants expo-status-bar
-
-# AI/ML
-npm install llama.rn whisper.rn
-
-# Database
-npm install @op-engineering/op-sqlite
-
-# UI
-npx expo install expo-speech expo-haptics expo-blur expo-file-system
-npm install react-native-reanimated react-native-gesture-handler react-native-safe-area-context
-npm install zustand
-
-# Networking
-npm install @react-native-community/netinfo cheerio
-
-# Dev
-npm install -D @types/react @types/react-native
+npx expo prebuild --clean
+npx expo run:ios --configuration Release --device
 ```
 
-### Step 1.4: Generate Native Projects
+### Step 4: Implement New Tools
+
+**App Lock (expo-local-authentication)**
+- New file: `src/tools/biometric-lock.ts`
+- FaceID/TouchID on app open
+- Setting to enable/disable
+
+**Calendar Tool (expo-calendar)**
+- New file: `src/tools/calendar-tool.ts`
+- `calendar_query`: Read today's events
+- `calendar_create`: Create event with title, date, duration
+
+**Contacts Tool (expo-contacts)**
+- New file: `src/tools/contacts-tool.ts`
+- `contact_lookup`: Search by name, return phone/email/birthday
+
+**Reminders Tool (expo-notifications + expo-task-manager)**
+- New file: `src/tools/reminder-tool.ts`
+- `reminder_create`: Schedule local notification at specific time
+- `reminder_list`: Show active reminders
+
+### Step 5: Add New Intents
+
+- `calendar_query`: "What's on my schedule today?"
+- `calendar_create`: "Add a meeting with Sarah tomorrow at 3pm"
+- `contact_lookup`: "What's Sarah's phone number?"
+- `reminder_create`: "Remind me to call mom at 5pm"
+- `app_lock`: Biometric authentication on app open
+
+### Step 6: Test on Device
+- App lock works with FaceID
+- Calendar read/write works
+- Contacts lookup works
+- Reminders fire at correct time
+
+---
+
+## Phase 2c: JS-Only Features (No Rebuild)
+
+**Haptic Feedback (expo-haptics — already installed)**
+- Subtle haptic on: message send, memory save, tool execution, error
+- File: Update `app/index.tsx` event handlers
+
+**Clipboard Tool (expo-clipboard — already installed)**
+- New file: `src/tools/clipboard-tool.ts`
+- `clipboard_read`: "Summarize what I copied"
+- `clipboard_write`: "Copy that to clipboard"
+
+**Text-to-Speech (expo-speech — already installed)**
+- New file: `src/tools/tts-tool.ts`
+- `tts_speak`: "Read that back to me"
+- Setting: auto-speak responses (toggle)
+
+**Network-Aware Routing**
+- Use `@react-native-community/netinfo` (already installed)
+- Disable web search when offline
+- Show online/offline indicator
+- Graceful fallback messages
+
+---
+
+## Phase 2d: 350M Router Model Integration
+
+### Step 1: Download Models
+
 ```bash
-npx expo prebuild
+# Router model
+curl -L -o models/LFM2.5-350M-Q4_K_M.gguf <huggingface-url>
+
+# Extractor model
+curl -L -o models/LFM2-350M-Extract-Q4_K_M.gguf <huggingface-url>
 ```
 
-### Step 1.5: Verify Build
+### Step 2: Implement Model Manager v2
+
+- File: `src/utils/model-manager.ts`
+- Device RAM detection at startup
+- Select appropriate Brain quant (Q4 for 4GB, Q6 for 6GB+)
+- Model swapping logic (release Router → load Brain → release Brain → load Router)
+
+### Step 3: Wire Router into Orchestrator
+
+- Replace regex-based intent classifier with 350M Router for complex cases
+- Keep regex as fast-path for known patterns (time, battery, device)
+- Router handles: ambiguous intents, tool parameter extraction, fact extraction
+
+### Step 4: Wire Extractor into Auto-Memory
+
+- After each conversation exchange, swap in Extractor
+- Feed: user message + assistant response
+- Extract: structured facts with entity, category, sentiment
+- Save to memory DB with embeddings
+- Swap back to Router
+
+### Step 5: Test on Device
+- Router classification accuracy vs regex
+- Model swap speed (how long to switch contexts)
+- Auto-memory extraction quality
+- RAM usage on 4GB vs 6GB devices
+
+---
+
+## Phase 2e: Voice Pipeline
+
+### Step 1: Install whisper.rn
+
 ```bash
-npx expo run:ios    # Test on your iPhone
-npx expo run:android # Test on Android emulator
+npm install whisper.rn
 ```
 
-**✅ Checkpoint:** App launches with blank screen on both platforms.
+### Step 2: Download Whisper Model
+
+- ggml-tiny.en.bin (75 MB)
+- Download on first use, same pattern as LLM models
+
+### Step 3: Push-to-Talk UI
+
+- Hold mic button → start recording
+- Release → stop recording → transcribe → send to orchestrator
+- Show animated waveform during recording
+
+### Step 4: Voice-to-Voice Loop
+
+- STT: Whisper transcribes audio → text
+- Text → Orchestrator → Response
+- TTS: expo-speech reads response aloud
+- Setting: toggle auto-speak
 
 ---
 
-## Phase 2: Core Chat Engine (Weeks 2-3)
+## Phase 2f: Web Search
 
-### Step 2.1: Model Manager (`src/utils/model-manager.ts`)
-- Check if model GGUF file exists in app's document directory
-- If not, show download screen with progress bar
-- Download from HuggingFace CDN URL
-- Store in `FileSystem.documentDirectory + '/models/'`
-- Track download progress via `FileSystem.createDownloadResumable()`
+### Step 1: Search Engine
 
-### Step 2.2: LLM Engine (`src/engines/llm.ts`)
-```typescript
-// Key functions to implement:
-export async function initLLM(modelPath: string): Promise<LlamaContext>
-export async function streamCompletion(
-  context: LlamaContext,
-  messages: Message[],
-  onToken: (token: string) => void
-): Promise<string>
-export async function releaseContext(): Promise<void>
-```
-- Use `initLlama()` from llama.rn with params from TECH_STACK.md
-- Use `context.completion()` with streaming callback for token-by-token display
-- Implement `response_format: { type: 'json_schema', ... }` for memory extraction
+- File: `src/engines/search.ts`
+- DuckDuckGo HTML endpoint
+- Parse with cheerio: extract top 3-5 result titles + snippets
 
-### Step 2.3: System Prompt (`src/prompts/system.ts`)
-```typescript
-export function buildSystemPrompt(memories: Memory[], isOnline: boolean): string {
-  return `You are Lyla, a private AI assistant running entirely on the user's device.
-You are direct, helpful, and never add disclaimers about being an AI.
-You remember things about the user from past conversations.
+### Step 2: Integration
 
-${memories.length > 0 ? `## What you remember about the user:\n${memories.map(m => `- ${m.fact}`).join('\n')}` : ''}
+- New intent: `web_search` — triggered for factual/realtime questions
+- Online: search → inject results into Brain context → synthesize answer
+- Offline: factual guard deflection ("I'm offline, can't search right now")
 
-${isOnline ? 'You have access to web search results which will be provided when relevant.' : 'You are currently offline. Rely on your knowledge and memories.'}
-
-Current date: ${new Date().toLocaleDateString()}
-Respond naturally and concisely.`
-}
-```
-
-### Step 2.4: Chat Store (`src/stores/chat-store.ts`)
-- Zustand store for: messages[], isGenerating, currentConversationId
-- Actions: addMessage, updateLastMessage (for streaming), clearChat, loadConversation
-
-### Step 2.5: Chat UI (`app/index.tsx`)
-- FlatList of ChatBubble components (inverted for chat feel)
-- ChatInput at bottom with TextInput + Send button + Mic button
-- ThinkingIndicator shows while model generates
-- Auto-scroll to latest message
-
-**✅ Checkpoint:** Can type a message and receive a streamed response from local LLM.
+### Step 3: Test
+- "What's the weather in Hyderabad?"
+- "Latest news on AI"
+- Offline behavior
 
 ---
 
-## Phase 3: Memory Engine (Weeks 4-5)
+## Execution Priority
 
-### Step 3.1: Database Schema (`src/db/database.ts`)
-```sql
--- Conversations
-CREATE TABLE conversations (
-  id TEXT PRIMARY KEY,
-  title TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
-);
-
--- Messages
-CREATE TABLE messages (
-  id TEXT PRIMARY KEY,
-  conversation_id TEXT REFERENCES conversations(id),
-  role TEXT CHECK(role IN ('user', 'assistant', 'system')),
-  content TEXT,
-  created_at INTEGER
-);
-
--- Memories (facts about the user)
-CREATE TABLE memories (
-  id TEXT PRIMARY KEY,
-  fact TEXT NOT NULL,
-  entity TEXT,
-  category TEXT,
-  source_message_id TEXT,
-  created_at INTEGER,
-  updated_at INTEGER
-);
-
--- Memory vectors (sqlite-vec virtual table)
-CREATE VIRTUAL TABLE memory_vectors USING vec0(
-  memory_id TEXT PRIMARY KEY,
-  embedding FLOAT[384]
-);
+```
+Phase 2a (bugs + rearch)     → MUST DO FIRST
+Phase 2b (native packages)   → SECOND (one rebuild)
+Phase 2c (JS-only features)  → THIRD (can parallel with 2b testing)
+Phase 2d (350M router)       → FOURTH (depends on 2a rearch)
+Phase 2e (voice)             → FIFTH (independent)
+Phase 2f (web search)        → SIXTH (independent)
 ```
 
-### Step 3.2: Embedding Engine (`src/engines/embeddings.ts`)
-- Initialize a SECOND llama.rn context with the snowflake-arctic-embed model
-- Use `context.embedding()` to generate 384-dim vectors from text
-- Batch embed on memory write, single embed on query
-
-### Step 3.3: Memory Extraction (`src/engines/memory.ts`)
-After EACH assistant response, run a background extraction:
-```typescript
-const extractionPrompt = `Extract factual information about the user from this conversation.
-Output ONLY a JSON array of facts. If no new facts, output [].
-
-Example output: [{"fact": "User's dog is named Max", "entity": "Max", "category": "pets"}]
-
-Conversation:
-User: ${userMessage}
-Assistant: ${assistantResponse}
-
-JSON output:`
-```
-- Use `response_format: { type: 'json_schema' }` to FORCE valid JSON
-- Parse the JSON array
-- For each fact: embed it → check if similar fact exists (cosine similarity > 0.85) → update or insert
-- This runs in background, doesn't block the chat UI
-
-### Step 3.4: Memory Retrieval
-Before each LLM call:
-1. Embed the user's message
-2. Query sqlite-vec: `SELECT * FROM memory_vectors WHERE embedding MATCH ? ORDER BY distance LIMIT 10`
-3. Fetch the corresponding fact text from `memories` table
-4. Inject into system prompt
-
-### Step 3.5: Memory Correction
-Parse user messages for correction intents:
-- "Forget that..." → Delete matching memory
-- "Actually, my name is..." → Update matching memory
-- "What do you remember about me?" → List all memories
-
-**✅ Checkpoint:** Tell the assistant your name. Start a new conversation. Ask "What's my name?" — it remembers.
-
----
-
-## Phase 4: Online Search (Week 6)
-
-### Step 4.1: Network Detection (`src/utils/network.ts`)
-```typescript
-import NetInfo from '@react-native-community/netinfo';
-export async function isOnline(): Promise<boolean> {
-  const state = await NetInfo.fetch();
-  return state.isConnected === true;
-}
-```
-
-### Step 4.2: Search Query Generation (`src/engines/search.ts`)
-If online, ask the LLM: "Generate a concise DuckDuckGo search query for this question: [user message]"
-- Use JSON schema to force output: `{"needs_search": true/false, "query": "..."}`
-- If `needs_search` is false, skip search entirely
-
-### Step 4.3: DuckDuckGo Fetch
-```typescript
-const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-const html = await fetch(url).then(r => r.text());
-// Parse with cheerio: extract top 3-5 result snippets
-// Inject into prompt as: "## Web Search Results:\n..."
-```
-
-### Step 4.4: Online/Offline Router
-```typescript
-async function buildPrompt(userMessage, memories) {
-  const online = await isOnline();
-  let searchResults = '';
-  if (online) {
-    const { needs_search, query } = await classifyIntent(userMessage);
-    if (needs_search) {
-      searchResults = await searchDuckDuckGo(query);
-    }
-  }
-  return buildSystemPrompt(memories, online) + searchContext + userMessage;
-}
-```
-
-**✅ Checkpoint:** Ask "What's the weather in Hyderabad today?" — gets a real answer when online, and a graceful "I'm offline" response when not.
-
----
-
-## Phase 5: Voice I/O (Week 7)
-
-### Step 5.1: STT Setup (`src/engines/stt.ts`)
-- Download `ggml-tiny.en.bin` on first use (same model-manager pattern)
-- Initialize whisper.rn context
-- Implement push-to-talk: user holds mic button → record → transcribe → send to LLM
-
-### Step 5.2: TTS Setup (`src/engines/tts.ts`)
-```typescript
-import * as Speech from 'expo-speech';
-export function speak(text: string) {
-  Speech.speak(text, { language: 'en-US', pitch: 1.0, rate: 0.9 });
-}
-export function stopSpeaking() { Speech.stop(); }
-```
-
-### Step 5.3: Voice Button UI
-- Mic icon in ChatInput
-- Press-and-hold → start recording (show animated waveform)
-- Release → stop recording → transcribe → auto-send
-- Assistant response auto-plays via TTS (toggle in settings)
-
-**✅ Checkpoint:** Hold mic, speak a question, hear the answer spoken back.
-
----
-
-## Phase 6: UI/UX Polish (Weeks 8-9)
-
-### Design System
-- **Colors:** Deep purple/indigo dark theme (#0D0B1A background, #7C3AED accent)
-- **Font:** Inter (Google Fonts) — clean, modern, readable
-- **Corners:** 16px border radius on cards, 24px on bubbles
-- **Animations:** Reanimated for message entrance, thinking pulse, voice waveform
-- **Glassmorphism:** Blur overlays on modals and panels
-
-### Screens
-1. **Onboarding** — 3 slides: Privacy promise → Model download → Start chatting
-2. **Chat** (Home) — Messages + Input bar + Mic button
-3. **History** — List of past conversations, swipe to delete
-4. **Settings** — Model selection, voice toggle, memory viewer, theme
-5. **Memory Panel** — Slide-up panel showing all extracted facts, tap to edit/delete
-
-### Key UX Decisions
-- Messages stream in token-by-token (typewriter effect)
-- "Thinking..." indicator with pulsing dot animation
-- Privacy badge in header: 🔒 "Everything stays on your device"
-- Online/offline indicator: green dot (online) / gray dot (offline)
-- Haptic feedback on send and voice activation
-
-**✅ Checkpoint:** App looks and feels premium. Smooth animations. No jank.
-
----
-
-## Phase 7: Testing & Beta (Weeks 10-11)
-
-### Testing Checklist
-- [ ] Fresh install flow (model download → onboarding → first chat)
-- [ ] Memory extraction works across conversations
-- [ ] Memory correction ("Forget X", "My name is actually Y")
-- [ ] Online search returns relevant, current results
-- [ ] Offline mode works fully (no crashes, graceful fallback)
-- [ ] Voice input transcribes accurately
-- [ ] Voice output speaks responses
-- [ ] App doesn't crash when switching between apps (memory management)
-- [ ] Battery usage is acceptable (no excessive drain)
-- [ ] Works on older devices (iPhone 12 / Snapdragon 695)
-
-### Devices
-- iPhone (your device) — primary iOS testing
-- Android Emulator — primary Android testing
-- Request beta testers via r/LocalLLaMA when ready
-
----
-
-## Critical Implementation Rules
-
-1. **NEVER call the LLM on the main thread.** Always use async/background processing.
-2. **ALWAYS release LLM context** when app goes to background (iOS will kill the app otherwise).
-3. **Re-initialize LLM context** when app returns to foreground.
-4. **Memory extraction runs AFTER the response is displayed**, not before. Never block the user.
-5. **All database writes are transactional.** Use SQLite transactions for consistency.
-6. **Model files go in documentDirectory, NOT bundled in the app.** App size must stay small.
-7. **Error boundaries around every native module call.** llama.rn, whisper.rn can crash — catch and recover gracefully.
-8. **Show clear loading states.** Model loading, thinking, transcribing — always tell the user what's happening.
+Phases 2d, 2e, 2f are independent of each other and can be done in any order after 2a+2b.

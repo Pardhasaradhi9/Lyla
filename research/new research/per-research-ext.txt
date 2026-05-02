@@ -1,0 +1,274 @@
+Short answer: on modern phones you should plan for **~30–40 % of physical RAM as a *safe* budget** for your React Native + llama.rn process if you want to avoid random kills. That makes a single 350M Q4_K_M model + RN app realistic on 4 GB devices, but a 1.2B Q6_K at 8K context is only comfortable on 6 GB+ and even then is tight.
+
+Below are realistic ranges and trade‑offs per question.
+
+***
+
+## 1. iOS per‑app memory budget (Jetsam)
+
+Apple doesn’t publish hard per‑app limits; the OS uses **Jetsam** to kill processes when total system memory gets tight. Empirical measurements on earlier devices show apps crash when they reach roughly **50–70 % of physical RAM**.[1][2]
+
+Older measurements (but still useful for ratios):  
+
+- iPhone 5 / 1 GB RAM → app could allocate ~645 MB (≈62 %).[2]
+- iPhone 5s / 1 GB RAM → ~646 MB (≈63 %).[1]
+- iPad Pro 12.9 / ~4 GB RAM → ~3.0 GB available to one app (≈77 %).[2]
+
+Extrapolating to your targets:
+
+- **iPhone 13 (4 GB)**  
+  - Realistically: plan for **1.5–2.0 GB steady‑state** for your app.  
+  - You *might* get closer to 2.5–3 GB in ideal conditions, but background processes and OS daemons will often push Jetsam to kill you sooner.  
+
+- **iPhone 15 (6 GB)**  
+  - Realistically: **2.5–3.0 GB** is a safe budget, **3.5–4 GB** is probably near the cliff.  
+  - Above that, you’re competing heavily with SpringBoard, Safari, Photos, etc., and background apps will be aggressively killed to keep you alive.
+
+So for planning: assume **~40 % of total RAM as a conservative ceiling** (≈1.6 GB on 4 GB, ≈2.4 GB on 6 GB) if you want to survive in worst‑case multitasking, and maybe **60–70 %** as an upper bound in controlled conditions.[1][2]
+
+***
+
+## 2. Android per‑app memory budget
+
+Android uses a **heap limit** per process, exposed via `ActivityManager.getMemoryClass()` and `getLargeMemoryClass()`.[3][4]
+
+- `memoryClass` returns the “approximate per‑application memory class of the current device” in MB; you should treat this as your Java/Kotlin heap budget.[4]
+- `largeHeap` in the manifest can raise this for memory‑intensive apps, but you shouldn’t rely on it unless absolutely necessary.[3]
+
+Rule of thumb today:
+
+- **4 GB Android device**  
+  - `memoryClass` often in the **256–384 MB** range;  
+  - `largeHeap` can raise you into the **512–768 MB** range, depending on OEM.[4][3]
+  - Native memory (C++ / llama.cpp) is *in addition* to this but still counts against overall system RAM; the LM runtime tends to allocate big native heaps, so you can OOM even if the Java heap is fine.
+
+- **6 GB Android device**  
+  - `memoryClass` more commonly **384–512 MB**, `largeHeap` up to **1 GB+** on some devices.  
+  - Practically, you can often use **1.5–2.0 GB total (Java + native)** before LMK starts killing you, but this varies a lot by OEM and background load.
+
+TL;DR: you **must** measure `memoryClass` at runtime and log real memory use on your target devices. Use `Runtime.getRuntime().maxMemory()` and `Debug.getNativeHeapAllocatedSize()` to watch both Java and native usage.[3][4]
+
+***
+
+## 3. Baseline React Native + Hermes memory
+
+There are some published comparisons between JSC, Hermes, and V8:
+
+- A profiling study found Hermes had **initial heap ~30 MB** and **peak usage ~136 MB** for a moderately complex RN app, versus JSC starting around 50 MB and peaking closer to 200 MB under the same scenario.[5][6]
+
+In practice, for a non‑trivial app:
+
+- **JS heap (Hermes)**:  
+  - Idle: **30–60 MB**.  
+  - Normal use (navigation, moderate state, some lists): **80–150 MB**.[5]
+- **Native RN + UI + OS allocations**:  
+  - Typically another **50–150 MB** depending on screens, images, and libraries.  
+
+So a realistic baseline for **RN + Hermes** with no model loaded is:
+
+- **Low‑end**: ~100 MB.  
+- **Typical real app**: **150–250 MB** total (JS + native), before any llama.rn context.
+
+Plan for at least **200 MB** baseline if you’re shipping something non‑trivial.
+
+***
+
+## 4. llama.rn memory usage estimates
+
+`llama.rn` is a thin binding over llama.cpp. The README recommends matching llama.cpp flags: you set `n_ctx`, `n_gpu_layers`, etc., and it allocates model weights + KV cache accordingly.[7]
+
+Community guidance for llama.cpp is:[8][9][10]
+
+- **Weights**: roughly equal to the **GGUF file size**, plus overhead; on CPU RAM this is often **1.0–1.3× file size**.[9]
+- **KV cache**: depends on layers, head dimension, context length and dtype; a measured rule‑of‑thumb is **≈0.75 MB per layer per 1K tokens (FP16)**, and far less if you quantize the KV cache.[10]
+- For 8B models at 4K context, KV alone is ~200 MB; for 8K, ~400 MB.[8]
+
+Given that, we can estimate:
+
+### 4.a 350M Q4_K_M, context 1024
+
+Typical 350–360M Q4_K_M GGUF files are about **0.2–0.3 GB**.[11][12]
+
+- **Weights in RAM**:  
+  - ~0.25 GB file → **0.25–0.35 GB actual** in RAM (including extra buffers).[9]
+- **KV cache @ 1K**:  
+  - 350M models have far fewer layers and heads than 7B. Scaling from 8B numbers (200 MB KV at 4K) gives you **~10–20 MB KV at 1K** for a 350M model (rough order of magnitude).[10][8]
+- **Total llama.cpp / llama.rn footprint** (weights + KV + scratch):  
+  - **≈300–450 MB** is a realistic band.  
+
+Add that to your RN baseline (~200 MB) and you’re looking at **~500–650 MB total app memory** with a 350M Q4_K_M at 1K context.
+
+This is entirely feasible on:
+
+- **iPhone 13 (4 GB)** if the device isn’t heavily loaded.  
+- **4 GB Android** if you’re careful with largeHeap and don’t have many other native buffers.
+
+### 4.b 1.2B Q6_K, context 8192
+
+We don’t have a specific 1.2B Q6_K GGUF example in the search, but:
+
+- 1B‑class Q6_K GGUF files tend to be around **2–3 GB**.[13][14]
+- For rough planning, assume **2.5 GB file size**.
+
+Then:
+
+- **Weights in RAM**:  
+  - ~2.5 GB file → **2.5–3.2 GB** RAM usage.[9]
+- **KV cache @ 8K**:  
+  - Using the 8B example: 8B at 8K → ~400 MB KV.[8]
+  - 1.2B is roughly 1.2 / 8 ≈ 0.15 of that, so **~60 MB KV cache at 8K** in FP16; quantized KV reduces further.[15][10]
+- **Total llama.cpp / llama.rn footprint**:  
+  - **≈2.8–3.5 GB** is a realistic range.
+
+Add RN baseline (~200 MB) and you’re at **~3.0–3.7 GB** for the whole app.
+
+This is:
+
+- **Marginal or impossible on 4 GB devices** – Jetsam/LMK will often kill you once you get close to 3 GB usage.[16][2]
+- Only realistic on **6 GB devices or better**, and even there you’re sharing with the rest of the system.
+
+### 4.c Both models loaded simultaneously
+
+If you keep **both contexts fully loaded**:
+
+- 350M Q4_K_M @ 1K context: ~0.3–0.45 GB.  
+- 1.2B Q6_K @ 8K context: ~2.8–3.5 GB.  
+
+Total **models alone**: **~3.1–4.0 GB**, plus **~0.2 GB RN baseline** → **~3.3–4.2 GB**.
+
+That is:
+
+- Unrealistic on any **4 GB** device.  
+- Very risky even on **6 GB** iPhones—it would leave almost no headroom for the OS; Jetsam will likely kill something.[16][2]
+- Only viable on **8 GB+ iPad / high‑end Android tablets**, and even then you’d want to reduce context or unload models when not in use.
+
+**Design implication:** on phones, you should generally **load a single model context at a time**, and consider either:
+
+- One “main” 350M model that does everything; or  
+- Dynamic model swapping (unload one context, load another) for rare flows.
+
+***
+
+## 5. Multiple llama.rn contexts at once
+
+`llama.rn` itself does not forbid multiple contexts; its API is just:
+
+```ts
+const context = await initLlama({ model, n_ctx, n_gpu_layers, ... })
+```
+
+You can call `initLlama` multiple times and keep multiple `context` objects in JS memory.[7]
+
+However:
+
+- **Memory scales linearly** with each context’s weights + KV cache. There’s no internal sharing of weights or KV between contexts.  
+- For concurrency, `llama.rn` already provides a **slot‑based parallel decoding API** (`context.parallel.enable({ n_parallel, n_batch })`) that shares a single KV cache across slots.[7]
+  - This is almost always more memory‑efficient than creating multiple separate contexts for multiple conversations.[7]
+
+So:
+
+- **Yes, you *can* load two contexts at once**, but on mobile you should treat that as an advanced/edge scenario and measure RAM carefully.  
+- The more idiomatic pattern is: **one context per model**, use `n_parallel` slots for concurrent requests; avoid multiple models unless you’re on 8 GB+ devices.[7]
+
+***
+
+## 6. Metal GPU sharing for multiple models on iOS
+
+`llama.rn` uses the same Metal backend as llama.cpp and notes:[7]
+
+- Metal requires at least an **Apple7‑class GPU** and is not available in the simulator.  
+- Extended Virtual Addressing and **Increased Memory Limit** capabilities are recommended for iOS projects, implying heavy unified‑memory usage.[7]
+
+Key points:
+
+- Apple GPUs use **unified memory** – GPU and CPU share the same physical RAM pool.[17]
+- Each llama.cpp context with `n_gpu_layers > 0` allocates Metal buffers for the offloaded layers. Multiple contexts or models will **each allocate their own GPU buffers**, all coming from the same unified RAM.  
+- Metal itself allows multiple `MTLDevice` and `MTLCommandQueue` users in one process, so there’s no hard “one model only” restriction – but you are bound by RAM: the sum of all Metal allocations + CPU allocations must fit under Jetsam limits.[17][16]
+
+Practically:
+
+- **Yes**, you can run multiple llama.rn contexts using Metal on iOS, but:
+  - Their GPU memory usage **adds up**; there’s no automatic weight sharing across models.  
+  - Unified memory still counts against the same per‑app Jetsam budget as CPU allocations, so moving weights to Metal **does not magically give you extra RAM**. It just reallocates within the same pool, sometimes with better bandwidth.[16][17]
+
+For a phone‑class device, a good pattern is:
+
+- Offload most or all layers of **one model** (e.g., 350M) to Metal.  
+- Keep context size moderate (1K–2K) and use parallel slots for concurrency.  
+- Avoid multiple Metal‑backed contexts unless you’ve verified you stay well below ~2–3 GB total on a 6 GB device.
+
+***
+
+## Practical budgets to design around
+
+Putting it all together for your React Native + llama.rn design:
+
+- **4 GB iOS/Android phones**  
+  - Safe app budget: **<=1.5 GB**.  
+  - RN + Hermes: ~0.2 GB.  
+  - Leaves **~1.3 GB** for models.  
+  - Realistic: **one 350M Q4_K_M** with 1K–2K context, possibly a small embedding model *instead of* a second LLM.
+
+- **6 GB phones (iPhone 15, many Android flagships)**  
+  - Safe app budget: **~2–2.5 GB**.  
+  - RN + Hermes: ~0.2 GB.  
+  - Leaves **~1.8–2.3 GB** for models.  
+  - Realistic: one **350M–1B Q4/Q5** model at modest context, or **1.2B Q6_K** at 8K context if you’re okay living near the edge and aggressively shutting down other heavy processes.
+
+If you want, I can help you define concrete `initLlama` configs (n_ctx, n_gpu_layers, KV cache quant, n_parallel) for “4 GB phones” and “6 GB+ phones” profiles, plus a small diagnostic screen to log actual memory usage per device.
+
+Sources
+[1] Ios: Maximum memory limit for an iOS app https://copyprogramming.com/howto/how-much-memory-can-one-ios-app-use
+[2] iOS memory allocation - how much memory can be used in an application? https://stackoverflow.com/questions/6044147/ios-memory-allocation-how-much-memory-can-be-used-in-an-application
+[3] Maximum memory limit of each Process in Android https://androidcreativity.wordpress.com/2016/09/14/maximum-memory-limit-of-each-process-in-android/
+[4] ActivityManager.MemoryClass Property (Android.App) https://learn.microsoft.com/en-us/dotnet/api/android.app.activitymanager.memoryclass?view=net-android-35.0
+[5] How to Use Hermes Engine for Better React Native Performance https://oneuptime.com/blog/post/2026-01-15-react-native-hermes-engine/view
+[6] React Native Memory profiling (JSC vs V8 vs Hermes) https://dev.to/anotherjsguy/react-native-memory-profiling-jsc-vs-v8-vs-hermes-1c76
+[7] Liquid: Language Models are Scalable and Unified Multi-modal Generators http://arxiv.org/pdf/2412.04332.pdf
+[8] llama.cpp Advanced Guide: Flags That Actually Boost Speed https://craftrigs.com/guides/llama-cpp-advanced-guide/
+[9] Hardware specs for GGUF 7B/13B/30B parameter models https://github.com/ggml-org/llama.cpp/discussions/3847
+[10] GPU VRAM Calculator for Local LLM: Model Size + Context + KV ... https://craftrigs.com/guides/gpu-vram-calculator-local-llm-model-size-kv-cache/
+[11] itlwas/SmolLM2-360M-Q4_K_M-GGUF - Hugging Face https://huggingface.co/itlwas/SmolLM2-360M-Q4_K_M-GGUF
+[12] jewelzufo/gemma-3-270m-it-GGUF:Q6_K/model https://ollama.com/jewelzufo/gemma-3-270m-it-GGUF:Q6_K/blobs/9826846190de
+[13] llama.cpp VRAM Requirements: Complete 2026 Guide to GPU ... https://localllm.in/blog/llamacpp-vram-requirements-for-local-llms
+[14] Mungert/Llama-3.2-1B-Instruct-GGUF - Hugging Face https://huggingface.co/Mungert/Llama-3.2-1B-Instruct-GGUF
+[15] Q4 KV Cache Fit 32K Context into 8GB VRAM — Only Math ... https://dev.to/plasmon_imp/q4-kv-cache-fit-32k-context-into-8gb-vram-only-math-broke-209k
+[16] Memory Issues on 4 GB iOS/iPadOS devices #291 - GitHub https://github.com/apple/ml-stable-diffusion/issues/291
+[17] philipturner/metal-usm: Access CPU pointers from inside ... - GitHub https://github.com/philipturner/metal-usm
+[18] Taking Your iPhone 4S to the Max: For iPhone 4S and Other iOS 5-Enabled iPhones https://www.semanticscholar.org/paper/ac4520506989f72df8884fbbb74facee58dd603a
+[19] Core Data for iOS: Developing Data-Driven Applications for the iPad, iPhone, and iPod touch https://www.semanticscholar.org/paper/45dbd800f4310877e01d4a4d0acbde51042f27ac
+[20] Taking Your iPhone 4S to the Max: For iPhone 4S and Other iOS 5-Enabled iPhones https://www.semanticscholar.org/paper/61be4cd0e5146d03ef07b78f21619c04d8fda962
+[21] Reply to iManage: A novel self‐management app for sickle cell disease https://onlinelibrary.wiley.com/doi/10.1002/pbc.26358
+[22] Resource management and security issues in mobile phone operating systems: A comparative analysis https://peerj.com/preprints/3344v1
+[23] An effective dynamic exposure determination method for high dynamic range photography on iOS devices http://ieeexplore.ieee.org/document/7459967/
+[24] FoodFoto: A Systems Thinking Approach to Dietary Intake Collection, Storage and Analysis. https://journals.lww.com/10.1097/CIN.0000000000000650
+[25] QOL-58. IMPROVEMENT IN VISUAL ACUITY OF PEDIATRIC PATIENTS WITH BRAIN TUMORS WITH BEVACIZUMAB https://academic.oup.com/neuro-oncology/article/20/suppl_2/i169/5000974
+[26] Why does llama.cpp use so much VRAM (and RAM)? #9784 https://github.com/ggml-org/llama.cpp/discussions/9784
+[27] llama-rn.podspec - GitHub https://github.com/Vali-98/cui-llama.rn/blob/main/llama-rn.podspec
+[28] TheDrummer_Behemoth-ReduX-123B-V1-GGUF Free Chat Online https://skywork.ai/blog/models/thedrummer_behemoth-redux-123b-v1-gguf-free-chat-online-skywork-ai/
+[29] Modify the memory limit of the iOS system for jailbroken devices https://stash.wiki/en/faq/jailbreak-ios-memory-limit
+[30] [PDF] CompAct: Compressed Activations for Memory-Efficient LLM Training https://aclanthology.org/2025.naacl-long.71.pdf
+[31] react-native-ai/llama - NPM https://npmjs.com/package/@react-native-ai/llama
+[32] GaLore: Memory-Efficient LLM Training by Gradient Low-Rank Projection http://arxiv.org/pdf/2403.03507.pdf
+[33] LLM in a flash: Efficient Large Language Model Inference with Limited
+  Memory http://arxiv.org/pdf/2312.11514.pdf
+[34] AWQ: Activation-aware Weight Quantization for LLM Compression and
+  Acceleration https://arxiv.org/pdf/2306.00978.pdf
+[35] Highly Optimized Kernels and Fine-Grained Codebooks for LLM Inference on
+  Arm CPUs https://arxiv.org/pdf/2501.00032.pdf
+[36] Optimization of Armv9 architecture general large language model
+  inference performance based on Llama.cpp http://arxiv.org/pdf/2406.10816.pdf
+[37] ME-Switch: A Memory-Efficient Expert Switching Framework for Large
+  Language Models http://arxiv.org/pdf/2406.09041.pdf
+[38] QLLM: Accurate and Efficient Low-Bitwidth Quantization for Large
+  Language Models https://arxiv.org/pdf/2310.08041.pdf
+[39] A dynamic parallel method for performance optimization on hybrid CPUs https://arxiv.org/pdf/2411.19542.pdf
+[40] [User] Memory usage is extremely low when running 65b 4-bit ... https://github.com/ggml-org/llama.cpp/issues/864
+[41] So what does KV CACHE look like? · ggml-org llama.cpp https://github.com/ggml-org/llama.cpp/discussions/7625
+[42] 30B model now needs only 5.8GB of RAM? How? #638 https://github.com/ggml-org/llama.cpp/discussions/638
+[43] Llama.cpp now supports 8K context scaling after the latest merged ... https://www.reddit.com/r/LocalLLaMA/comments/150gdkw/llamacpp_now_supports_8k_context_scaling_after/
+[44] Ollama VRAM Requirements: Complete 2026 Guide to GPU ... https://localllm.in/blog/ollama-vram-requirements-for-local-llms
+[45] llama.cpp server - Memory allocation increases until OOM https://github.com/ggml-org/llama.cpp/issues/5993
+[46] Running Production LLMs on Consumer Hardware: Quantization ... https://culpur.net/2026/04/03/running-production-llms-on-consumer-hardware-quantization-context-management-and-inference-optimization/
+[47] Memory Tests using Llama.cpp KV cache quantization https://www.reddit.com/r/LocalLLaMA/comments/1dalkm8/memory_tests_using_llamacpp_kv_cache_quantization/
+[48] Understanding memory usage · ggml-org llama.cpp https://github.com/ggml-org/llama.cpp/discussions/1876

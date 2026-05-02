@@ -1,148 +1,120 @@
 # Decisions Log — Lyla
 
-> Every major decision we've made, why we made it, and what alternatives we rejected.
-> **Read this first** before making any changes to the project.
+> Every major decision with rationale. Read before making changes.
+> Last Updated: 2026-05-02
 
 ---
 
-## Decision 001: Primary LLM Model → Qwen3 1.7B Abliterated
-- **Date:** 2026-04-21
-- **Decision:** Use `Qwen3-1.7B-Abliterated` (Q4_K_M GGUF, ~1.0 GB) as the default model.
+## Decision 001: Primary Brain → LFM2.5-1.2B-Instruct (Abliterated)
+- **Date:** 2026-04-30
+- **Decision:** Use `Huihui-LFM2.5-1.2B-Instruct-abliterated` (Q6_K, 918 MB) as the primary reasoning model.
 - **Why:**
-  - Best tool calling / JSON structured output of any model in this size class
-  - Well-tested abliteration by mlabonne on HuggingFace (minimal quality loss)
-  - 119 languages including Hindi, Telugu, Tamil — critical for Indian users
-  - Supports both Thinking and Non-Thinking modes natively
-- **Rejected Alternatives:**
-  - `LFM 2.5 1.2B` — Faster but censored, English-primary, no robust abliterated versions
-  - `Gemma 3 1B` — Google's censorship is deeply embedded, harder to abliterate
-  - `Qwen 2.5 1.5B` — Older generation, Qwen3 is strictly better
-- **Impact:** The app's memory extraction engine depends heavily on reliable JSON output. Qwen3's superior tool calling makes the memory system more reliable.
+  - Native tool-calling support via `<|tool_call_start|>/<|tool_call_end|>` tokens
+  - Hybrid LIV architecture (attention + convolution) — fast on mobile
+  - Abliterated — no refusals, follows all instructions
+  - ChatML format — clean integration with llama.rn
+  - Trained on 28T tokens — overtrained for quality at small size
+- **Rejected:** Qwen3-1.7B (too large), Gemma-3-1B (censored, no tool calling), Phi-4-mini (2.5 GB)
 
-## Decision 002: Secondary Speed Model → LFM 2.5 1.2B Thinking
-- **Date:** 2026-04-21
-- **Decision:** Offer `LFM2.5-1.2B-Thinking` (Q4_K_M GGUF, ~700 MB) as an optional speed model.
+## Decision 002: Router Model → LFM2.5-350M (Q4_K_M)
+- **Date:** 2026-05-02
+- **Decision:** Use `LFM2.5-350M` (Q4_K_M, 229 MB) as the always-loaded router model.
 - **Why:**
-  - 7x faster inference than Qwen3 on mobile NPUs
-  - Lower battery consumption (hybrid LIV architecture)
-  - Excellent "thinking" mode for complex reasoning
-  - Smallest footprint (~700 MB vs 1.0 GB)
-- **Note:** This is censored. Users who want uncensored + speed can import their own model.
+  - Same architecture family as the Brain — consistent ChatML format
+  - Native tool calling support (same `<|tool_call_start|>` tokens)
+  - 229 MB — fits on ALL devices including 4 GB phones
+  - 188 tok/s on Snapdragon, 313 tok/s on AMD — sub-50ms for short inputs
+  - IFEval 76.96 — best-in-class instruction following for sub-500M
+  - Trained on 28T tokens — extreme overtraining = reliable structured output
+- **Rejected:** Gemma-3-270M (no tool calling, Google-censored), Qwen3-0.6B (500 MB, too large for router), SmolLM2-360M (weaker IFEval)
 
-## Decision 003: Embedding Model → snowflake-arctic-embed:33m
-- **Date:** 2026-04-21
-- **Decision:** Use `snowflake-arctic-embed:33m` (GGUF format) for memory vector embeddings.
+## Decision 003: Extraction Model → LFM2-350M-Extract (Q4_K_M)
+- **Date:** 2026-05-02
+- **Decision:** Use `LFM2-350M-Extract` (Q4_K_M, 229 MB) for structured fact extraction from conversations.
 - **Why:**
-  - 33M params, ~384-dim vectors — tiny and fast on mobile
+  - Same size as Router — shares the same RAM slot (model swapping)
+  - Purpose-built for converting unstructured text → structured JSON/XML/YAML
+  - Directly designed for: entity extraction, fact extraction, knowledge graph population
+  - ChatML format — same integration as Router
+- **Note:** Router and Extractor swap in/out of the same RAM slot. Only one is loaded at a time.
+
+## Decision 004: Embedding Model → Snowflake Arctic Embed S
+- **Date:** 2026-04-21
+- **Decision:** Use `snowflake-arctic-embed-s` (Q8_0, 35 MB) for memory vector embeddings.
+- **Why:**
+  - 384-dim vectors — tiny and fast
   - Better retrieval quality than all-MiniLM of similar size
-  - Newer architecture with superior training
-  - Available in GGUF format — can be loaded via llama.rn (no need for separate ONNX runtime)
-- **Rejected Alternatives:**
-  - `all-minilm:22m` — Industry standard but older, lower quality retrieval
-  - `all-minilm:33m` — Similar but Snowflake has better training methodology
-  - `snowflake-arctic-embed:22m` — Viable but 33m is only 11M params more for meaningfully better quality
-  - `granite-embedding:30m` — Good but less tested in GGUF format for mobile
+  - Available in GGUF — loads via llama.rn (no separate ONNX runtime)
+  - 35 MB — negligible RAM footprint, always loaded
 
-## Decision 004: App Framework → React Native (Expo with prebuild)
+## Decision 005: App Framework → React Native (Expo Prebuild)
 - **Date:** 2026-04-21
-- **Decision:** Use React Native with Expo (using `npx expo prebuild` for native modules).
+- **Decision:** React Native 0.81.5 + Expo SDK 54 with `npx expo prebuild`.
 - **Why:**
   - Single codebase for iOS + Android
   - `llama.rn`, `whisper.rn` are React Native native modules
-  - Expo provides excellent developer experience (hot reload, OTA updates for JS)
-  - Prebuild generates native iOS/Android projects for native module linking
-- **Rejected Alternatives:**
-  - Tauri v2 — Great for desktop but mobile support is less mature than RN
-  - Flutter — No mature llama.cpp bindings
-  - Native Swift/Kotlin — Two codebases to maintain, slower development
+  - Expo provides OTA JS updates, excellent dev experience
+  - Prebuild generates native projects for custom native modules
+  - New Architecture (Fabric + TurboModules) for 60fps streaming
 
-## Decision 005: Memory Database → SQLite + sqlite-vec
+## Decision 006: Memory Database → SQLite + sqlite-vec
 - **Date:** 2026-04-21
-- **Decision:** Use SQLite with the `sqlite-vec` extension for vector similarity search.
+- **Decision:** expo-sqlite with sqlite-vec bundled extension for vector search.
 - **Why:**
-  - SQLite is already embedded in every iOS/Android device
-  - `sqlite-vec` is pure C, zero dependencies, pre-compiled for mobile
-  - Integrates via `op-sqlite` React Native library
-  - Brute-force KNN is fast enough for <100K vectors on mobile
-- **Rejected Alternatives:**
-  - ChromaDB — Requires Python runtime, not viable on mobile
-  - Pinecone/Weaviate — Cloud services, violates our privacy principle
-  - FAISS — Complex to compile for mobile, heavy dependencies
+  - expo-sqlite is Expo-native, ships with SDK 54
+  - sqlite-vec via `withSQLiteVecExtension: true` in app.json — zero config
+  - KNN search is fast enough for <100K vectors on mobile
+  - All data in one database file — simple backup/clear
 
-## Decision 006: Speech-to-Text → whisper.rn
-- **Date:** 2026-04-21
-- **Decision:** Use `whisper.rn` with `ggml-tiny.en.bin` (~75 MB) for on-device STT.
+## Decision 007: System Architecture → System Intelligence (Not Chatbot)
+- **Date:** 2026-05-02
+- **Decision:** Lyla is a system intelligence where the LLM is the brain and device tools/APIs are the body. The orchestrator routes through the system first, brain second.
 - **Why:**
-  - Direct React Native binding for whisper.cpp
-  - CoreML acceleration on iOS, CPU on Android
-  - Supports real-time transcription + file transcription
-  - Built-in Silero VAD (Voice Activity Detection)
-  - 75 MB model is tiny enough to bundle or download once
-- **Note:** Start with tiny.en (English). Add base multilingual model later for Hindi/Telugu support.
+  - A 1.2B model is too small to handle everything via LLM alone
+  - Deterministic tools (time, battery, calendar) are 100% reliable — zero hallucination
+  - The LLM should only handle what it's good at: creative reasoning, synthesis, complex queries
+  - This is how real systems (Jarvis, Alexa) work — the "intelligence" comes from connecting tools, not from the model alone
+- **Impact:** Every new feature is a Tool in the registry, not a special case in the codebase
 
-## Decision 007: Text-to-Speech → expo-speech (V1) → Piper (V2)
-- **Date:** 2026-04-21
-- **Decision:** Use `expo-speech` (OS native TTS) for V1. Upgrade to Piper TTS in V2.
+## Decision 008: Model Loading → Device-Aware + Model Swapping
+- **Date:** 2026-05-02
+- **Decision:** Automatically detect device RAM and load appropriate model variants. Cannot load Router + Brain simultaneously on most phones.
 - **Why:**
-  - expo-speech wraps iOS AVSpeechSynthesizer and Android TextToSpeech
-  - Zero model download, zero setup, works offline
-  - Quality is "decent" not "premium" — acceptable for V1
-  - Piper has no official React Native wrapper yet — needs custom native module (V2 effort)
-- **Trade-off:** OS voices sound robotic. This is a V1 compromise for shipping speed.
+  - RAM research: 4 GB phones have ~1.5 GB safe app budget, 6 GB phones ~2.5 GB
+  - Router (229 MB) + Brain Q6 (918 MB) + RN baseline (200 MB) + embedding (35 MB) = ~1.4 GB minimum
+  - Brain Q6 at 8K context uses 2.8-3.5 GB alone — exceeds budget on 4 GB devices
+  - Solution: Load Router by default, swap to Brain on demand
+  - 4 GB devices: Brain uses Q4_K_M at 4K context (~600 MB, fits)
+  - 6 GB+ devices: Brain uses Q6_K at 8K context (full power)
+- **Impact:** Model manager must detect device RAM at startup and download appropriate quantization
 
-## Decision 008: Web Search → DuckDuckGo HTML Scraping
-- **Date:** 2026-04-21
-- **Decision:** Use DuckDuckGo's HTML lite endpoint for web search grounding.
+## Decision 009: Voice → Whisper Tiny EN + expo-speech
+- **Date:** 2026-04-21 (reaffirmed 2026-05-02)
+- **Decision:** Use whisper.rn with ggml-tiny.en.bin for STT. expo-speech for TTS.
 - **Why:**
-  - Free, no API key required
-  - Simple HTML parsing (no complex API integration)
-  - Privacy-aligned (DuckDuckGo doesn't track users)
-  - Lightweight enough for mobile
-- **Rejected Alternatives:**
-  - Brave Search API — Requires API key registration, free tier is limited
-  - Google Search API — Costs money, tracks users
-  - Bing API — Requires Azure account
+  - whisper.rn: direct RN binding for whisper.cpp, CoreML acceleration on iOS
+  - tiny.en: 75 MB, fast, accurate for English
+  - expo-speech: zero-setup, OS-native, works offline
+  - Future: upgrade to base multilingual for Hindi/Telugu support
 
-## Decision 009: V1 Feature Scope → 6 Features
+## Decision 010: Web Search → DuckDuckGo HTML
+- **Date:** 2026-04-21 (reaffirmed 2026-05-02)
+- **Decision:** DuckDuckGo HTML lite endpoint, parsed with cheerio.
+- **Why:** Free, no API key, privacy-aligned, simple HTML parsing
+- **Rejected:** Brave Search (API key required), Google/Bing (cost + tracking)
+
+## Decision 011: Identity → PrepMyRez
 - **Date:** 2026-04-21
-- **Decision:** Ship V1 with exactly 6 features:
-  1. Private local LLM chat (streaming)
-  2. Persistent memory (auto-extract + correct + recall)
-  3. Online search grounding (DuckDuckGo when connected)
-  4. Chat history (stored locally, searchable)
-  5. Voice input (Whisper STT)
-  6. Voice output (OS native TTS)
-- **Why:** User's explicit instruction: "fewer features that work 100% rather than 10 features that break."
+- **Decision:** Lyla is built by PrepMyRez (prepmyrez.com). This identity is baked into the system prompt.
+- **Why:** Consistent branding, honest attribution
 
-## Decision 010: Distribution → Open Source + APK + App Stores Later
+## Decision 012: STT → whisper.rn
 - **Date:** 2026-04-21
-- **Decision:** Build open source. Distribute Android APKs via GitHub Releases first. App Store/Play Store later.
-- **Why:** Zero cost to start. Build community trust. iOS requires ₹9,603/yr developer account — defer until demand exists.
+- **Decision:** Use whisper.rn with ggml-tiny.en.bin for on-device speech-to-text.
+- **Why:** Direct RN binding, CoreML on iOS, real-time transcription, 75 MB model
 
-## Decision 011: Orchestration Layer → TypeScript Intent Router Before LLM
-- **Date:** 2026-04-30
-- **Decision:** Add a deterministic TypeScript orchestration layer between the user and the LLM. Identity questions, greetings, and real-time factual queries are intercepted and answered WITHOUT the model.
-- **Why:**
-  - 1.2B models hallucinate severely on identity questions ("who are you", "who made you")
-  - 1.2B models fabricate URLs, statistics, and real-time data
-  - Pattern matching is 100% reliable for these categories — zero hallucination risk
-  - Research confirmed: scaffolding (routing, guardrails) is the force multiplier for sub-2B models, not raw model intelligence
-  - LFM2.5-1.2B was trained with native tool-calling tokens — we can leverage this for Phase 3/4
-- **Architecture:**
-  - `intent-classifier.ts` — Regex-based, 9 intent types
-  - `identity-handler.ts` — Hardcoded responses (randomized for variety)
-  - `factual-guard.ts` — Detects weather/prices/news → graceful deflection
-  - `response-formatter.ts` — Strips markdown/tokens from model output
-  - `tool-definitions.ts` — LFM2.5 tool-calling schemas (Phase 3/4)
-  - `index.ts` — Main orchestrator tying the pipeline together
-- **Rejected Alternatives:**
-  - Pure system prompt approach — Failed. Model ignores instructions at 1.2B scale.
-  - Separate classifier model (e.g., 270M router) — Overhead not justified yet. TypeScript regex is faster and deterministic.
-- **Impact:** This is the "brain" that makes Lyla's 1.2B model actually useful. The model only handles what it's good at: creative, open-ended conversation.
-
-## Decision 012: System Prompt → Shortened for 1.2B Instruction Following
-- **Date:** 2026-04-30
-- **Decision:** Replaced the long system prompt with a 4-line, high-urgency instruction set.
-- **Why:** Research confirmed that 1.2B models lose coherence with long system prompts. The orchestrator now handles identity/factual routing, so the model only needs minimal behavioral rules (be concise, don't guess facts, talk like a friend).
-- **Previous prompt:** 5 critical rules, PrepMyRez mention, identity instructions — 800+ chars
-- **New prompt:** 4 rules, 250 chars. Identity handled by orchestrator.
+## Decision 013: File Understanding → RAG Pipeline (Future)
+- **Date:** 2026-05-02
+- **Decision:** Future feature: users can import files (PDFs, receipts, notes) and query them. Implementation: file picker → parse → chunk → embed → store in sqlite-vec → query with semantic search.
+- **Why:** Arctic Embed already supports this. Just needs file picker + PDF parser.
+- **Timeline:** V2 (after core system is stable)

@@ -1,133 +1,177 @@
 # Progress Tracker — Lyla
 
-> **STATUS: 🟢 PHASE 3 COMPLETE — MEMORY ENGINE BUILT**
-> Last Updated: 2026-04-30T14:30:00+05:30
+> **STATUS: Phase 1 Complete — Phase 2 Starting**
+> Last Updated: 2026-05-02
 
 ---
 
-## Current Phase
-**Phase 3: Memory Engine** ✅ — Vector database, fact extraction, and memory retrieval.
-**Phase 4: Online Search** — DuckDuckGo integration, online/offline router.
+## Current State
 
-## What Has Been Completed
-- [x] User research (5 research documents analyzed — grk, zlm, gpt, pep, qwn)
-- [x] Feasibility analysis (all components proven viable on mobile)
-- [x] Budget calculation (₹12K–28K Year 1)
-- [x] Model selection (Qwen3 1.7B Abliterated + LFM 2.5 1.2B Thinking)
-- [x] Embedding model selection (snowflake-arctic-embed:33m)
-- [x] Tech stack finalization (React Native + llama.rn + whisper.rn + sqlite-vec + expo-speech)
-- [x] V1 feature scope locked (6 features)
-- [x] Context folder created for project continuity
-- [x] Implementation plan created
-- [x] **Phase 1: Project Setup** ✅
-  - [x] Expo project initialized (SDK 54, blank-typescript template)
-  - [x] New Architecture enabled (newArchEnabled: true)
-  - [x] All core dependencies installed (expo-router, zustand, reanimated, etc.)
-  - [x] Folder structure created (engines/, db/, stores/, prompts/, theme/, utils/)
-  - [x] Theme foundation (colors, typography, spacing) — OLED dark theme
-  - [x] Zustand stores (app-store, chat-store, settings-store)
-  - [x] Expo Router configured (_layout, index, settings, history screens)
-  - [x] Engine stubs with interfaces (llm, memory, embeddings, search, stt, tts)
-  - [x] Database schema defined (conversations, messages, memories, memory_vectors)
-  - [x] Prompt templates created (system, memory-extract, search-query)
-  - [x] Model manager (download, cache, delete using Expo SDK 54 FileSystem)
-  - [x] Network utility (online/offline detection via NetInfo)
-  - [x] TypeScript compiles with zero errors
-  - [x] Metro bundler starts successfully
-- [x] **Phase 2.5: Orchestration Layer** ✅
-  - [x] Intent classifier (pattern-based routing for 9 intent types)
-  - [x] Identity handler (hardcoded zero-hallucination responses)
-  - [x] Factual guard (intercepts real-time questions: weather, prices, news)
-  - [x] Response formatter (strips markdown, extracts thinking traces)
-  - [x] Tool definitions (LFM2.5 native tool-calling schemas — Phase 3/4 ready)
-  - [x] Main orchestrator (ties intent → handler → LLM pipeline)
-  - [x] System prompt hardened (shortened for 1.2B instruction-following)
-  - [x] TypeScript compiles with zero errors
-  - [x] Research synthesis complete (TurboQuant, TurboVec, Liquid AI tool-use)
-- [x] **Phase 3: Memory Engine** ✅
-  - [x] SQLite database initialization (expo-sqlite)
-  - [x] Chat Repository for CRUD operations
-  - [x] UI wired up (History screen, New Chat button, persistence logic)
-  - [x] Verified model supports native tool calling!
-  - [x] Vector database initialized with sqlite-vec
-  - [x] Snowflake Arctic Embed (35MB) background downloading
-  - [x] Embedding engine built via llama.rn
-  - [x] Tool-call extraction (JSON/Python kwarg parsing)
-  - [x] Orchestrator auto-injection of retrieved memories
+Lyla is a **working on-device AI assistant** running on physical iPhone hardware. It has:
+- Streaming LLM chat with the 1.2B model
+- Deterministic intent routing (9 intents)
+- Native device APIs (time, battery, device info)
+- Vector memory (semantic save/search)
+- Chat persistence (SQLite)
+- Custom app icon
+- Dark theme UI
 
-## What Is Next
-- [ ] **Phase 4: Online Search** — DuckDuckGo integration, online/offline router
-- [ ] **Phase 5: Voice I/O** — whisper.rn STT + expo-speech TTS
-- [ ] **Phase 6: UI/UX Polish** — Premium design, animations, onboarding
-- [ ] **Phase 7: Testing & Beta** — Device testing, bug fixes, optimization
+**What it lacks**: Multi-model routing, tool calling, auto-memory extraction, calendar/contacts integration, voice, web search. It currently works as a smart chatbot — it needs to become a system intelligence.
 
-## Files & Folders
+---
+
+## Phase 1: Foundation (COMPLETE)
+
+- [x] Expo project initialized (SDK 54, New Architecture)
+- [x] All core dependencies installed
+- [x] Folder structure created (engines/, db/, stores/, orchestrator/, theme/, utils/)
+- [x] OLED dark theme (colors, typography, spacing)
+- [x] Zustand stores (app-store, chat-store, settings-store)
+- [x] Expo Router configured (chat, settings, history)
+- [x] Engine stubs with interfaces
+- [x] Database schema (conversations, messages, memories, memory_vectors)
+- [x] Model manager (download, cache via expo-file-system)
+
+## Phase 2.5: Orchestration Layer (COMPLETE)
+
+- [x] Intent classifier (pattern-based, 9 intents)
+- [x] Identity handler (hardcoded zero-hallucination responses)
+- [x] Factual guard (intercepts real-time questions)
+- [x] Response formatter (strips tokens, extracts thinking traces)
+- [x] Main orchestrator (ties intent → handler → LLM pipeline)
+- [x] System prompt (shortened for 1.2B instruction-following)
+
+## Phase 3: Memory Engine (COMPLETE)
+
+- [x] SQLite database initialization (expo-sqlite)
+- [x] sqlite-vec extension loaded via bundled extensions
+- [x] Chat Repository (CRUD for conversations + messages)
+- [x] Memory Repository (CRUD + vector search)
+- [x] Embedding engine (Arctic Embed via llama.rn)
+- [x] Memory engine (coordinates embedding + repository)
+- [x] Orchestrator auto-injects retrieved memories into LLM context
+- [x] Long-press to save memory
+- [x] "Clear All Memories" in settings
+
+## Phase 3.5: Native Device Tools (COMPLETE)
+
+- [x] Device handlers: timezone-aware time, battery, device info
+- [x] 4 new intents: identity_query, limitations_query, battery_query, device_query
+- [x] Updated identity handler with accurate responses
+- [x] 200-char limit on long-press memory saves
+- [x] Custom iOS app icon (all sizes generated from 1024x1024 master)
+- [x] Suppressed TextInputUI warnings with LogBox.ignoreLogs
+
+## iOS Device Testing (COMPLETE)
+
+- [x] App running on physical iPhone
+- [x] Model downloading and loading successfully
+- [x] All native intents work (time, battery, device, identity, limitations)
+- [x] LLM streaming responses working
+- [x] Memory save/recall working
+- [x] Performance: superfast on real hardware (Metal GPU acceleration)
+
+## Bugs Found During Testing (FIXED)
+
+- [x] **BUG-004**: App reopens with last chat instead of fresh chat
+- [x] **BUG-005**: Context overflow crash after long conversations
+- [x] **BUG-006**: Memory query dumps raw messages instead of semantic results
+- [x] **BUG-007**: Memory saves raw text, not structured facts
+- [x] **BUG-008**: Slowdown after long conversation (context grows too large)
+
+---
+
+## What's Next: Phase 2 — System Rearchitecture
+
+### Phase 2a: Bug Fixes + Orchestrator Rearch (JS-only, no rebuild) — COMPLETE
+- [x] Fix BUG-004: Start fresh on app open
+- [x] Fix BUG-005: Context overflow protection
+- [x] Fix BUG-006: Semantic memory query
+- [x] Fix BUG-007: Fact extraction (regex-based, no LLM)
+- [x] Fix BUG-008: Lower MAX_CONTEXT_CHARS
+- [x] Rearchitect orchestrator with tool loop
+- [x] Create system state object
+- [x] Create tool registry with schemas
+
+### Phase 2b: Batch Native Package Install (one rebuild)
+- [ ] Install: expo-local-authentication, expo-calendar, expo-contacts, expo-secure-store, expo-notifications, expo-task-manager, expo-background-fetch, expo-crypto
+- [ ] Run `npx expo prebuild --clean`
+- [ ] Rebuild iOS + Android
+- [ ] Test on device
+
+### Phase 2c: JS-Only Features (no rebuild)
+- [ ] Haptic feedback (expo-haptics — already installed)
+- [ ] Clipboard tool (expo-clipboard — already installed)
+- [ ] Text-to-speech (expo-speech — already installed)
+- [ ] Network-aware routing
+
+### Phase 2d: 350M Router Model Integration
+- [ ] Download and test LFM2.5-350M Q4_K_M
+- [ ] Download and test LFM2-350M-Extract Q4_K_M
+- [ ] Implement model manager with device-aware model selection
+- [ ] Implement model swapping (Router ↔ Brain)
+- [ ] Wire Router into orchestrator for fast intent classification
+- [ ] Wire Extractor into auto-memory pipeline
+
+### Phase 2e: Voice Pipeline
+- [ ] Install whisper.rn
+- [ ] Download ggml-tiny.en.bin
+- [ ] Implement push-to-talk UI
+- [ ] Wire STT → orchestrator → TTS loop
+
+### Phase 2f: Web Search
+- [ ] Implement DuckDuckGo HTML search
+- [ ] Parse results with cheerio
+- [ ] Inject search results into LLM context
+- [ ] Graceful offline fallback
+
+---
+
+## Git Status
+
+- **Last commit**: d704d5f "feat: Phase 1 complete - native device tools + bug fixes"
+- **Branch**: main
+- **Remote**: pushed
+
+---
+
+## File Structure (Current)
+
 ```
 /Users/pardhasaradhichukka/Desktop/Lyla/
-├── context/                    # Project continuity files (READ FIRST)
-│   ├── PROJECT_IDENTITY.md     # Name, mission, vision, novelty
-│   ├── DECISIONS.md            # All decisions with rationale
-│   ├── PROGRESS.md             # This file — current status
-│   ├── IMPLEMENTATION_PLAN.md  # Master implementation plan
-│   ├── ERRORS_AND_SOLUTIONS.md # Bugs encountered and fixes
-│   ├── FUTURE_PLANS.md         # V2/V3 roadmap
-│   └── TECH_STACK.md           # Complete technical reference
+├── context/                    # THIS FOLDER — read first
 ├── research/                   # User research documents
-└── app/                        # React Native project root ✅
+│   └── new research/           # Model selection + RAM budget research
+├── ios_icons/                  # iOS icon set (source)
+├── App_icon.png                # Master app icon (1024x1024)
+└── app/                        # React Native project root
     ├── app/                    # Expo Router screens
-    │   ├── _layout.tsx         # Root layout (dark theme, navigation)
-    │   ├── index.tsx           # Home / Chat screen (with orchestrator)
-    │   ├── settings.tsx        # Settings screen (placeholder)
-    │   └── history.tsx         # Chat history (placeholder)
+    │   ├── _layout.tsx
+    │   ├── index.tsx           # Chat screen
+    │   ├── settings.tsx
+    │   └── history.tsx
     ├── src/
-    │   ├── orchestrator/       # 🆕 Phase 2.5 — Message routing layer
-    │   │   ├── index.ts        # Main orchestrator (routes messages)
-    │   │   ├── intent-classifier.ts  # Pattern-based intent detection
-    │   │   ├── identity-handler.ts   # Hardcoded identity responses
-    │   │   ├── factual-guard.ts      # Real-time question deflection
-    │   │   ├── response-formatter.ts # Strips markdown/tokens from output
-    │   │   └── tool-definitions.ts   # LFM2.5 tool-calling schemas
-    │   ├── engines/            # AI engine wrappers
-    │   │   ├── llm.ts          # LLM engine (with system prompt)
-    │   │   ├── memory.ts       # Memory engine (placeholder)
-    │   │   ├── embeddings.ts   # Embedding engine (placeholder)
-    │   │   ├── search.ts       # Search engine (placeholder)
-    │   │   ├── stt.ts          # STT engine (placeholder)
-    │   │   └── tts.ts          # TTS engine (functional)
-    │   ├── db/
-    │   │   ├── database.ts     # Schema definitions
-    │   │   ├── chat-repository.ts
-    │   │   └── memory-repository.ts
-    │   ├── stores/
-    │   │   ├── app-store.ts    # App-wide state
-    │   │   ├── chat-store.ts   # Chat state
-    │   │   └── settings-store.ts
-    │   ├── prompts/
-    │   │   ├── system.ts       # System prompt builder (dynamic)
-    │   │   ├── memory-extract.ts
-    │   │   └── search-query.ts
-    │   ├── utils/
-    │   │   ├── constants.ts    # App constants
-    │   │   ├── system-prompt.ts # 🔄 Hardened system prompt (shorter)
-    │   │   ├── model-manager.ts # Model download/cache
-    │   │   └── network.ts      # Online/offline detection
-    │   └── theme/
-    │       ├── index.ts        # Barrel export
-    │       ├── colors.ts       # OLED dark theme palette
-    │       ├── typography.ts   # Platform-aware type scale
-    │       └── spacing.ts      # 4px grid + radius + shadows
-    ├── assets/                 # Static assets
-    ├── app.json                # Expo config (Lyla branding)
-    ├── tsconfig.json           # TypeScript (path aliases)
-    └── package.json            # Dependencies
+    │   ├── orchestrator/       # Message routing + device handlers
+    │   ├── engines/            # LLM, memory, embeddings, TTS
+    │   ├── db/                 # SQLite + sqlite-vec
+    │   ├── stores/             # Zustand state
+    │   ├── utils/              # Constants, prompts, model manager
+    │   └── theme/              # Colors, typography, spacing
+    ├── ios/                    # Native iOS project (prebuilt)
+    ├── android/                # Native Android project (prebuilt)
+    └── assets/                 # Icons, splash, favicon
 ```
 
+---
+
 ## Agent Handoff Instructions
-> **If you are a new agent picking up this project, do the following:**
-> 1. Read ALL files in `/context/` folder first
-> 2. Check this PROGRESS.md for current status
-> 3. Read DECISIONS.md to understand WHY things were decided
-> 4. Read ERRORS_AND_SOLUTIONS.md to avoid repeating mistakes
-> 5. Read TECH_STACK.md for exact versions and configurations
-> 6. Check the implementation plan artifact for step-by-step instructions
-> 7. Continue from wherever the last agent left off
+
+> **If you are a new agent picking up this project:**
+> 1. Read ALL files in `/context/` folder — start with ARCHITECTURE.md
+> 2. Read PROJECT_IDENTITY.md to understand the VISION (system intelligence, not chatbot)
+> 3. Read TECH_STACK.md for exact versions and configurations
+> 4. Read this PROGRESS.md for current status
+> 5. Read DECISIONS.md to understand WHY things were decided
+> 6. Read IMPLEMENTATION_PLAN.md for what to build next
+> 7. Read ERRORS_AND_SOLUTIONS.md to avoid repeating mistakes
+> 8. Continue from Phase 2a

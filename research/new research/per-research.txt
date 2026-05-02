@@ -1,0 +1,209 @@
+There *are* sub‑500M models specifically tuned for extraction, LFM2‑350M‑Extract is already available as a GGUF model and is exactly in that niche, and a well‑trained 350M instruction model is generally sufficient for structured JSON extraction on short texts if you use a strict prompt pattern.[1][2][3]
+
+Below are concise answers point‑by‑point plus a JSON‑friendly prompt pattern you can drop into your app.
+
+***
+
+## Sub‑500M models for NER / information extraction
+
+For classical NER and IE, there are many sub‑500M models, but most are *token‑classification* transformers, not GGUF chat models:
+
+- **dslim/bert-base-NER** – 110M BERT‑base model fine‑tuned on CoNLL‑2003 to recognize PER/LOC/ORG/MISC entities; explicitly packaged “ready to use for Named Entity Recognition.”[4]
+- **distilbert‑based NER models** – e.g. `distilbert-NER` (≈66M) for faster NER, also from the same author, plus domain variants like `d4data/biomedical-ner-all` (distilbert‑base, 66M) targeting 107 biomedical entity types.[5][4]
+- **OpenMed and other domain models** – the HF NER tag shows multiple OpenMed NER models between ≈108M and ≈434M parameters specialized for pharma, disease, DNA, etc.[6]
+
+These give you excellent NER out of the box, but:
+
+- They don’t do relation/fact/intent out‑of‑the‑box. You’d build that with task‑specific heads or a second model.  
+- They’re not GGUF; you’d run them via ONNX/CoreML or a small transformer runtime instead of llama.cpp/llama.rn.
+
+On the *LLM‑style* IE side:
+
+- **LiquidAI/LFM2‑350M‑Extract** – 350M model explicitly fine‑tuned for converting unstructured documents into structured JSON/XML/YAML.[3][1]
+- **NuMind/NuExtract** – information‑extraction model based on **phi‑3‑mini**, fine‑tuned on a synthetic IE dataset; a GGUF quantization (`QuantFactory/NuExtract-GGUF`) exists, but it uses the *full* phi‑3‑mini (~3.8B), with separate “tiny (0.5B)” and “large (7B)” variants mentioned but not as GGUF yet.[7][8]
+
+So: yes, there are many sub‑500M models specifically tuned for NER/IE, but in the GGUF space the standout “designed for structured extraction” model in your size range is LFM2‑350M‑Extract.
+
+***
+
+## LFM2‑350M‑Extract in GGUF – what it does and how to use it
+
+**Availability and format**
+
+- Model: `LiquidAI/LFM2-350M-Extract`.  
+- GGUF repo: `LiquidAI/LFM2-350M-Extract-GGUF` with 4‑, 5‑, 6‑, 8‑ and 16‑bit quants.[1][3]
+- Hugging Face card explicitly shows how to run it with `llama.cpp` using `llama-cli -hf LiquidAI/LFM2-350M-Extract-GGUF`, so it is directly usable wherever llama.cpp/gguf works (including llama.rn).[3]
+
+**What it’s trained to do**
+
+From the model card:[1][3]
+
+- It is “designed to **extract important information from a wide variety of unstructured documents** (articles, transcripts, reports) into **structured outputs like JSON, XML, or YAML**.”  
+- Example use cases include:
+  - Extracting invoice details from emails into structured JSON.  
+  - Converting regulatory filings into XML.  
+  - Turning support tickets into YAML for analytics.  
+  - Populating knowledge graphs with entities and attributes from reports.  
+
+So conceptually it’s *exactly* your use‑case: take arbitrary text + some schema and output structured data.
+
+Compared to the general LFM2.5‑350M instruct model, `LFM2‑350M‑Extract` is more narrowly optimized for extraction/structuring rather than open‑ended chat.[9][3]
+
+***
+
+## Is a 350M instruction model “enough” for structured JSON extraction?
+
+For short inputs (<100 tokens) and compact schemas, yes – especially when the model is explicitly fine‑tuned for extraction:
+
+- Liquid’s own blog describes LFM2.5‑350M as *“built for structured outputs, data extraction, and tool calling”* at 350M parameters, targeted at edge environments.[9]
+- Distill Labs reports that after fine‑tuning LFM2.5‑350M for tool calling, it reaches **96–98 % tool‑call equivalence** to a 120B teacher model across multiple tool‑calling benchmarks, while staying at 350M.[2]
+
+Empirically that means:
+
+- For tasks like **NER, relation extraction, short fact extraction, and intent classification**, a 350M IE‑tuned or instruction‑tuned model is *more than enough* in quality terms, provided:
+  - Inputs are short and well‑formed.  
+  - You constrain output format tightly (see next section).  
+  - You don’t expect deep multi‑hop reasoning.  
+
+In your specific examples:
+
+- `"my mom Sarah"` → {entity: "Sarah", relation: "mother"}  
+- `"I love spicy food"` → {fact: "likes spicy food", category: "food_preference", sentiment: "positive"}  
+
+These are trivial for a well‑trained 350M IE model; your main challenges will be robustness to messy, code‑mixed, or very long inputs, not raw capacity.
+
+***
+
+## Prompt format for reliable JSON from sub‑500M models
+
+From NuExtract and Liquid’s IE models you can see recurring patterns:[7][1]
+
+- Provide an **explicit JSON template/schema**.  
+- Wrap input and output sections in **clear markers**.  
+- Optionally include **one worked example**.  
+
+NuExtract, for instance, uses a prompt of this form:[7]
+
+```text
+<|input|>
+### Template:
+{...JSON schema...}
+### Example:
+{...optional JSON example...}
+### Text:
+{full input text}
+<|output|>
+```
+
+For a general 350M model in llama.rn, a robust pattern that works well is:
+
+```text
+You are an information extraction engine.
+You MUST output ONLY valid JSON that matches the given schema.
+Do not add explanations.
+
+### Schema
+```json
+{
+  "entities": [
+    {
+      "text": "string",
+      "type": "person | location | organization | date | other",
+      "span": [start_char, end_char]
+    }
+  ],
+  "relations": [
+    {
+      "source": "string",      // entity.text
+      "relation": "mother | father | sibling | friend | other",
+      "target": "string"       // entity.text
+    }
+  ],
+  "facts": [
+    {
+      "fact": "string",
+      "category": "food_preference | time_preference | travel_preference | other",
+      "sentiment": "positive | neutral | negative"
+    }
+  ],
+  "intent": {
+    "label": "time_query | greeting | question | other",
+    "confidence": 0.0
+  }
+}
+```
+
+### Example
+Text: "My mom Sarah loves spicy food."
+Output:
+```json
+{
+  "entities": [
+    {"text": "Sarah", "type": "person", "span": }[10][11]
+  ],
+  "relations": [
+    {"source": "Sarah", "relation": "mother", "target": "speaker"}
+  ],
+  "facts": [
+    {"fact": "likes spicy food", "category": "food_preference", "sentiment": "positive"}
+  ],
+  "intent": {"label": "other", "confidence": 0.9}
+}
+```
+
+### Text
+{USER_TEXT}
+
+### Output JSON
+```
+
+**Key practical tips for sub‑500M models:**
+
+1. **Single task per call (or unified schema).**  
+   Don’t ask the model to alternate between free‑form chat and structured extraction; give it a fixed schema that covers NER, relations, facts, and intent in one shot like above.
+
+2. **Strongly constrain values.**  
+   - Enumerate entity types, relation types, categories, intents as small closed sets.  
+   - This helps small models avoid hallucinated labels.
+
+3. **Force JSON‑only output.**  
+   - Put “Output ONLY JSON, no extra text” in the instructions.  
+   - Wrap the JSON in triple backticks and strip everything outside on the client.
+
+4. **Use delimiters around the text.**  
+   - Markers like `### Text:` and `### Output JSON` or special tokens (`<|input|>`, `<|output|>`) improve reliability, as seen in NuExtract’s design.[7]
+
+5. **Keep schemas shallow.**  
+   - Sub‑500M models handle 1–2 levels of nesting well.  
+   - Avoid very deep or recursive JSON structures; flatten where possible (e.g., `facts` array with simple objects).
+
+If you want, I can help you design two concrete prompt templates:
+
+- A **“unified extraction”** schema like above that you can reuse across most intents.  
+- A lighter **“intent‑only”** schema for latency‑critical paths.
+
+Sources
+[1] LiquidAI/LFM2-350M-Extract-GGUF - Hugging Face https://huggingface.co/LiquidAI/LFM2-350M-Extract-GGUF
+[2] Fine-Tuning Liquid's LFM2.5: Accurate Tool Calling at 350M ... https://www.distillabs.ai/blog/fine-tuning-liquids-lfm25-accurate-tool-calling-at-350m-parameters/
+[3] H$_2$O: Heavy-Hitter Oracle for Efficient Generative Inference of Large
+  Language Models https://arxiv.org/pdf/2306.14048.pdf
+[4] dslim/bert-base-NER - Hugging Face https://huggingface.co/dslim/bert-base-NER
+[5] d4data/biomedical-ner-all - Hugging Face https://huggingface.co/d4data/biomedical-ner-all
+[6] Models - Hugging Face https://huggingface.co/models?other=named-entity-recognition
+[7] QuantFactory/NuExtract-GGUF - Hugging Face https://huggingface.co/QuantFactory/NuExtract-GGUF
+[8] NuExtract GGUF · Models - Dataloop https://dataloop.ai/library/model/quantfactory_nuextract-gguf/
+[9] LFM2.5-350M: No Size Left Behind - Liquid AI https://www.liquid.ai/blog/lfm2-5-350m-no-size-left-behind
+[10] mradermacher/Qwen3-0.6B-GGUF · Hugging Face - HF-Mirror https://api-inference.hf-mirror.com/mradermacher/Qwen3-0.6B-GGUF
+[11] Qwen/Qwen3-0.6B-GGUF - Hugging Face https://huggingface.co/Qwen/Qwen3-0.6B-GGUF
+[12] ChemDFM: A Large Language Foundation Model for Chemistry http://arxiv.org/pdf/2401.14818.pdf
+[13] Novel Room Temperature Ionic Liquid for Liquid-Phase Microextraction of Cannabidiol from Natural Cosmetics https://www.mdpi.com/2297-8739/7/3/45/pdf
+[14] Automatic Annotation Augmentation Boosts Translation between Molecules
+  and Natural Language https://arxiv.org/pdf/2502.06634.pdf
+[15] A closer look at how the dispersive liquid–liquid microextraction method works. Investigation of the effect of solvent mixture composition on the quality and stability of the cloudy state https://www.frontiersin.org/articles/10.3389/fchem.2024.1383445/full
+[16] LiquidAI/LFM2.5-350M - Hugging Face https://huggingface.co/LiquidAI/LFM2.5-350M
+[17] Liquid AI releases LFM2.5-350M -> Agentic loops at 350M parameters https://www.reddit.com/r/LocalLLaMA/comments/1s8u1c1/liquid_ai_releases_lfm25350m_agentic_loops_at/
+[18] A lightweight model for Named Entity Recognition (NER) https://huggingface.co/blog/minibase-ai/named-entity-recognition
+[19] Build a Powerful NER Model with Hugging Face Transformers https://www.youtube.com/watch?v=o5gcP9AmCfk
+[20] LiquidAI/lfm2.5-350m - Ollama https://ollama.com/LiquidAI/lfm2.5-350m
+[21] feat: add support for cataloging GGUF models · Issue #4184 - GitHub https://github.com/anchore/syft/issues/4184
+[22] GGUF Parser: A Tool for Estimating LLM Resource Requirements https://gpustack.ai/gguf-parser/

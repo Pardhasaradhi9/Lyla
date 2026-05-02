@@ -1,0 +1,329 @@
+For your constraints (200–400 MB GGUF, strong structured output, instruction-tuned), the best fits are:
+
+- LiquidAI LFM2.5‑350M (instruction model, GGUF repo)  
+- SmolLM2‑360M‑Instruct GGUF  
+- Gemma‑3‑270M‑IT GGUF  
+
+Qwen3‑0.6B‑abliterated is great for uncensored behavior but cannot hit 200–400 MB at Q4_K_M / Q5_K_M; Phi‑4‑mini is far too large.
+
+Below is a candidate‑by‑candidate comparison.
+
+***
+
+## 1. LiquidAI LFM2.5‑350M
+
+### Model & GGUF location
+
+- Instruction‑tuned model: `LiquidAI/LFM2.5-350M` (this is the general‑purpose instruct checkpoint, separate from `LFM2.5‑350M‑Base`).[1]
+- GGUF repo (quantized): `https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF`.[2]
+
+The GGUF model tree shows the base, the finetuned (instruct) model, and 25 quantizations; this GGUF repo is explicitly the quantized form of the **instruction‑tuned** `LFM2.5‑350M` model.[1][2]
+
+### File size and suitable quant
+
+The model card shows 0.4 B parameters and supports 4‑bit through 16‑bit quantization, but it does **not** list per‑file sizes in the text.[2]
+Given 350 M parameters, a 4‑bit GGUF quantization will be in the ~200–300 MB range; this is consistent with other 350–360 M 4‑bit models that end up around 0.2–0.3 GB.[3][4]
+
+You’ll need to open the “Files and versions” tab on Hugging Face to pick the exact `*-Q4_K_M.gguf` or `*-Q5_K_M.gguf` file and see the precise MB value; the card itself doesn’t expose the file list.[2]
+
+### Tool calling / structured output
+
+- The instruction model is explicitly recommended for **data extraction, structured outputs, and tool use**.[1]
+- Tool‑use section: the model emits Python‑like function calls between `<|tool_call_start|>` and `<|tool_call_end|>` by default and can be forced to output JSON function calls via the system prompt.[1][5][6]  
+- This makes it extremely suitable for intent classification, entity extraction, and JSON‑shaped responses.
+
+### Chat format
+
+- Uses a ChatML‑like template, e.g.:[1]
+  ```text
+  <|startoftext|><|im_start|>system
+  You are a helpful assistant trained by Liquid AI.<|im_end|>
+  <|im_start|>user
+  What is C. elegans?<|im_end|>
+  <|im_start|>assistant
+  ```
+- You can generate this using `tokenizer.apply_chat_template()` in Transformers; llama.cpp/llama.rn can be configured with a compatible jinja template.[1]
+
+### Benchmarks
+
+From the official model card:[1]
+
+- GPQA Diamond: 30.64  
+- MMLU‑Pro: 20.01  
+- IFEval: 76.96  
+- IFBench: 40.69  
+- Multi‑IF: 44.92  
+
+Several domain benchmarks (CaseReportBench, BFCL v3/v4, τ²‑Bench) also show LFM2.5‑350M outperforming similar‑size Granite and Qwen3.5‑0.8B instruct models on many structure‑heavy tasks.[1]
+
+### Latency considerations
+
+- Card reports **313 tok/s** on an AMD CPU and **188 tok/s on Snapdragon Gen4** for decoding.[7][1]
+- For 100 generated tokens, that’s on the order of a few hundred ms on a high‑end mobile SoC; getting under 100 ms end‑to‑end will depend heavily on llama.rn’s optimizations, context length, and batching. You’ll want to benchmark directly on‑device.
+
+**Verdict:** Strongest match for your use‑case: purpose‑built for structured outputs and tool use, instruction‑tuned, GGUF, ChatML‑style, and small enough in Q4_K to meet your 200–400 MB target.
+
+***
+
+## 2. Qwen3‑0.6B‑abliterated‑GGUF (uncensored)
+
+### Model & GGUF location
+
+- Abliterated (uncensored) instruct‑like model: `mlabonne/Qwen3-0.6B-abliterated`.[8]
+  - Based on `Qwen/Qwen3-0.6B-Base` with further post‑training and abliteration; the tree shows it as a finetune of the post‑trained `Qwen/Qwen3-0.6B`.[8]
+- GGUF quantizations: `mradermacher/Qwen3-0.6B-abliterated-GGUF`.[9]
+  - URL: `https://huggingface.co/mradermacher/Qwen3-0.6B-abliterated-GGUF`.[9]
+
+### File size and suitable quant
+
+The GGUF repo provides a size table:[9]
+
+- Q4_K_M: 0.5 GB ≈ 512 MB  
+- Q4_K_S: 0.5 GB  
+- Q5_K_M: 0.5 GB  
+
+So:
+
+- **At Q4_K_M / Q5_K_M this model is ~500+ MB**, which **exceeds** your requested 200–400 MB envelope.[9]
+- If you relax the quantization requirement, **Q2_K** is **0.4 GB (~400 MB)**, just on your upper bound, but that is a 2‑bit quant and will noticeably hurt quality.[9]
+
+### Tool calling / structured output
+
+- The Qwen3 series supports OpenAI‑style **function calling**, emitting structured JSON arguments for `tools` definitions in the chat API.[10][11]
+- The abliteration procedure only modifies latent refusal directions, not the architecture or tokenization, so tool‑calling and structured output behavior remain available if you prompt for them.[8]
+
+You should still explicitly constrain outputs using JSON schemas or regex in the client where possible.
+
+### Chat format
+
+- Qwen chat is ChatML‑style; typical template uses `tokenizer.apply_chat_template(messages, ...)`.[12][13]
+- For function calling, Qwen docs show standard OpenAI‑style messages with `"role": "user" | "assistant" | "tool"` and a `function_call` field.[10]  
+
+### Benchmarks
+
+- The specific **abliterated** 0.6B variant has no benchmark table on its model card.[8]
+- Qwen3 in general is positioned as improved over Qwen2.5 on reasoning and instruction‑following, but you’d have to rely on your own evals for the abliterated 0.6B.[12]
+
+**Verdict:** Excellent choice if uncensored behavior is your top priority and you can tolerate ~500 MB. It doesn’t meet your strict 200–400 MB **at Q4_K_M/Q5_K_M**, but Q2_K is within size at the cost of quality.
+
+***
+
+## 3. Microsoft Phi‑4‑mini‑instruct‑GGUF
+
+### Model & GGUF location
+
+- Base instruct checkpoint: `microsoft/Phi-4-mini-instruct`.[14]
+- GGUF quant repository: `bartowski/microsoft_Phi-4-mini-instruct-GGUF`.[14]
+  - URL: `https://huggingface.co/bartowski/microsoft_Phi-4-mini-instruct-GGUF`.[14]
+
+### File size and suitable quant
+
+From the GGUF table:[14]
+
+- Q4_K_M: 2.49 GB  
+- Q4_K_L: 2.64 GB  
+- Q5_K_M: 2.85 GB  
+- Even the most aggressive useful quants (Q3_K_S / IQ3_XS) are 1.8–1.9 GB.[14]
+
+So **Phi‑4‑mini‑instruct cannot meet your 200–400 MB requirement in any reasonable quantization**.
+
+### Tool calling / structured output
+
+- Prompt format is a simple tag‑based chat format, with **no special function‑calling tokens** in the GGUF card:[14]
+  ```text
+  <|system|>{system_prompt}<|end|><|user|>{prompt}<|end|><|assistant|>
+  ```
+- In Microsoft’s hosted APIs, Phi‑4‑mini supports JSON mode, but that layer is not encoded as special tokens in this GGUF conversion; you’d rely on prompting to get JSON.
+
+### Benchmarks
+
+- The GGUF card itself provides **no benchmark numbers**; it only lists quantizations and some speed notes for Qwen tests.[14]
+- External blogs describe Phi‑4‑mini as 3.8 B parameters with strong math and coding performance, but those numbers are not broken out in the quant repo.[15]
+
+**Verdict:** Too large for on‑device 200–400 MB budget. I’d drop Phi‑4‑mini‑instruct from your candidate list for this specific mobile target.
+
+***
+
+## 4. Gemma‑3‑270M‑IT (instruction‑tuned)
+
+### Model & GGUF location
+
+- Instruction‑tuned model: `google/gemma-3-270m-it` (license‑gated, requires terms acceptance on HF).[16]
+- GGUF conversion: `unsloth/gemma-3-270m-it-GGUF`.[17]
+  - URL: `https://huggingface.co/unsloth/gemma-3-270m-it-GGUF`.[17]
+
+### File size and suitable quant
+
+- `unsloth/gemma-3-270m-it-GGUF` is reported as a 0.3B‑parameter model and supports 2‑ to 16‑bit quants.[17]
+- An Ollama model based on this GGUF (Q6_K) is ~283 MB, confirming that 4‑ to 6‑bit quants fall nicely inside your 200–400 MB range.[18]
+- The HF model card for the GGUF repo itself does not list per‑file sizes, so you’ll have to pick, e.g., `gemma-3-270m-it-q4_k_m.gguf` in the UI and read the size; given 270 M params, **Q4_K_M will be comfortably <300 MB**.[18][17]
+
+### Tool calling / structured output
+
+- Google’s Gemma‑3 cards emphasize general text generation and reasoning; they do **not** define a built‑in tool‑calling protocol for the 270M model.[16]
+- You can absolutely prompt it to emit JSON, but you won’t get standardized `<tool_call>` tokens or OpenAI‑style `function_call` structures out of the box.
+
+For robust JSON, you’ll likely want to combine it with constrained decoding or a JSON‑mode wrapper on top of llama.rn.
+
+### Chat format
+
+- Gemma‑3 uses its own chat template, with support for `tokenizer.apply_chat_template(messages, ...)`; the exact special tokens are not exposed in the public card for 270M IT, but it is a conventional multi‑turn chat format similar in spirit to ChatML.[16][17]
+
+### Benchmarks (270M IT)
+
+From the Gemma‑3 model card (270M):[16][17]
+
+- HellaSwag (0‑shot, IT 270M): 37.7  
+- PIQA (0‑shot): 66.2  
+- ARC‑c (0‑shot): 28.2  
+- WinoGrande (0‑shot): 52.3  
+- BIG‑Bench Hard (few‑shot): 26.7  
+- IFEval (0‑shot): 51.2  
+
+These are weaker than LFM2.5‑350M and SmolLM2‑360M‑Instruct but still reasonable for a 270M model, and the tiny size makes it attractive for mobile.[3][16][1]
+
+**Verdict:** If you’re willing to accept Google’s safety tuning and no explicit tool‑calling protocol, Gemma‑3‑270M‑IT GGUF is an excellent size/perf trade‑off and definitely fits in 200–400 MB.
+
+***
+
+## 5. SmolLM2‑360M‑Instruct‑GGUF (additional sub‑500M instruct)
+
+This is not in your original list, but it’s one of the best‑documented sub‑500M instruct models with explicit function‑calling training.
+
+### Model & GGUF location
+
+- Instruction‑tuned model: `HuggingFaceTB/SmolLM2-360M-Instruct`.[19]
+- GGUF quant repo with eval table: `QuantFactory/SmolLM2-360M-Instruct-GGUF`.[3]
+  - URL: `https://huggingface.co/QuantFactory/SmolLM2-360M-Instruct-GGUF`.[3]
+
+There are also other GGUF conversions (e.g., `bartowski/SmolLM2-360M-Instruct-GGUF` and `ngxson/SmolLM2-360M-Instruct-Q8_0-GGUF`), but QuantFactory’s card contains the clearest benchmarks.[20][21][3]
+
+### File size and suitable quant
+
+- SmolLM2‑360M‑Instruct GGUF is listed as a 0.4B‑parameter llama‑family architecture.[3]
+- External Q4_K_M quant of the **base** 360M model (`AIronMind/SmolLM2-360M-Q4_K_M-GGUF`) is a single `smollm2-360m-q4_k_m.gguf` file, with size in the 0.2–0.3 GB range.[4]
+- You can expect **Q4_K_M / Q5_K_M instruct quants to land roughly 250–350 MB**, comfortably within your 200–400 MB requirement; check the specific GGUF repo’s Files tab for exact MB.
+
+### Tool calling / structured output
+
+From the SmolLM2 card:[19][3]
+
+- Instruct version was trained via SFT + DPO using datasets such as **Synth‑APIGen‑v0.1**, specifically to support **function calling** and related tasks (text rewriting, summarization, etc.).  
+- That makes it a very good candidate for producing structured JSON outputs and function‑call skeletons, even without special tool tokens.
+
+### Chat format
+
+- Recommended usage is with `tokenizer.apply_chat_template(messages, ...)` using standard `{"role": "user" | "system" | "assistant"}` messages.[3][19]  
+- Under the hood it’s a llama‑style architecture, so most llama.cpp chat templates can be adapted.
+
+### Benchmarks (Instruction model)
+
+From the SmolLM2 eval table:[19][3]
+
+- IFEval: 41.0 (better than Qwen2.5‑0.5B‑Instruct and older SmolLM‑360M‑Instruct)  
+- MT‑Bench: 3.66  
+- HellaSwag: 52.1  
+- ARC (avg): 43.7  
+- PIQA: 70.8  
+- MMLU (cloze): 32.8  
+- BBH (3‑shot): 27.3  
+- GSM8K (5‑shot): 7.43  
+
+These are very solid numbers for a 360M model and noticeably stronger than Gemma‑3‑270M‑IT on similar benchmarks.[16][3]
+
+**Verdict:** Arguably the most “balanced” sub‑400 MB option: strong benchmarks, explicit function‑calling training, llama‑style architecture, and GGUF readily available. If you don’t need uncensored behavior, SmolLM2‑360M‑Instruct‑GGUF is an excellent default.
+
+***
+
+## 6. Summary of candidates vs your requirements
+
+### High‑level suitability
+
+| Model | GGUF HF URL (repo) | Approx Q4_K_M / Q5_K_M size | Instr‑tuned? | Uncensored / abliterated? | Tool/JSON support | Chat format |
+| --- | --- | --- | --- | --- | --- | --- |
+| **LFM2.5‑350M** | `https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF`[2] | 4‑bit for 350M ⇒ ~200–300 MB (exact size in Files tab)[2][4] | Yes (general‑purpose instruction model)[1] | No (normal alignment, but relatively permissive) | Yes – explicit tool‑use protocol, Pythonic calls or JSON via prompt[1][5][6] | ChatML‑like (`<|im_start|>`, `<|im_end|>`, `<|startoftext|>`)[1] |
+| **Qwen3‑0.6B‑abliterated** | `https://huggingface.co/mradermacher/Qwen3-0.6B-abliterated-GGUF`[9] | Q4_K_M/Q5_K_M ≈ 0.5 GB ≈ 512 MB (too large); Q2_K ≈ 0.4 GB[9] | Based on post‑trained Qwen3‑0.6B (instruction + “thinking” modes)[8][12] | Yes – abliteration specifically removes refusal direction (uncensored)[8] | Qwen series supports OpenAI‑style function calling and JSON arguments[10][11] | ChatML‑like Qwen template via `apply_chat_template`[12][13] |
+| **Phi‑4‑mini‑instruct** | `https://huggingface.co/bartowski/microsoft_Phi-4-mini-instruct-GGUF`[14] | Q4_K_M ≈ 2.49 GB; even Q3 quants >1.8 GB[14] | Yes | No (standard alignment) | JSON via prompting only; no explicit tool tokens in GGUF card[14] | Simple `<|system|>/<|user|>/<|assistant|>/<|end|>` tags[14] |
+| **Gemma‑3‑270M‑IT** | `https://huggingface.co/unsloth/gemma-3-270m-it-GGUF`[17] | Q6_K ~283 MB (via derived Ollama model); Q4_K_M <300 MB[18][17] | Yes (instruction‑tuned IT variant)[16][22] | No – strongly safety‑tuned by Google[16][17] | No dedicated tool tokens; JSON via prompt & constrained decoding | Gemma chat template via `apply_chat_template`; multi‑turn chat similar to ChatML[16][17] |
+| **SmolLM2‑360M‑Instruct** | `https://huggingface.co/QuantFactory/SmolLM2-360M-Instruct-GGUF`[3] | Q4_K_M for 360M ≈ 250–350 MB (base Q4_K_M around this range)[4][3] | Yes – SFT+DPO instruct model[3][19] | No (standard HF alignment) | Trained with Synth‑APIGen function‑calling data; good at structured output[3][19] | HF chat template via `apply_chat_template` (llama‑style)[3][19] |
+
+***
+
+## 7. Which models best match your React Native / llama.rn use‑case?
+
+Given your hard constraints (200–400 MB, Q4_K_M/Q5_K_M, strong JSON/tool‑like behavior) and “prefer uncensored” requirement:
+
+1. **Primary choice – LFM2.5‑350M‑GGUF**  
+   - Designed specifically for on‑device data extraction, structured outputs, and tool use.[23][7][1]
+   - Q4_K_M quant should fall in your size window and is already validated with llama.cpp (therefore a good fit for llama.rn).[2][1]
+
+2. **Secondary choice – SmolLM2‑360M‑Instruct‑GGUF**  
+   - Slightly larger but still easily in 200–400 MB at Q4_K_M.[4][3]
+   - Strong general benchmarks and explicit function‑calling training, which is ideal for intent classification and structured JSON outputs.[19][3]
+
+3. **Compact option – Gemma‑3‑270M‑IT‑GGUF**  
+   - Safely within size budget even at Q6_K, with decent benchmark scores for 270M.[18][17][16]
+   - Less explicitly oriented toward tool calling, but usable for structured outputs with careful prompting and decoding control.
+
+4. **Uncensored option (if you relax size somewhat) – Qwen3‑0.6B‑abliterated‑GGUF**  
+   - Gives you the abliterated, uncensored behavior you want with Qwen’s tool‑calling patterns, but Q4_K_M is ~0.5 GB.[10][8][9]
+
+If you’d like, I can sketch a concrete llama.rn config (chat template + sampling + JSON‑friendly system prompt) for LFM2.5‑350M and SmolLM2‑360M‑Instruct so you can drop them straight into your React Native app.
+
+Sources
+[1] Efficient LLM Inference on CPUs https://arxiv.org/pdf/2311.00502.pdf
+[2] AWQ: Activation-aware Weight Quantization for LLM Compression and
+  Acceleration https://arxiv.org/pdf/2306.00978.pdf
+[3] GEB-1.3B: Open Lightweight Large Language Model http://arxiv.org/pdf/2406.09900.pdf
+[4] itlwas/SmolLM2-360M-Q4_K_M-GGUF - Hugging Face https://huggingface.co/itlwas/SmolLM2-360M-Q4_K_M-GGUF
+[5] onnx-community/LFM2.5-350M-ONNX - Hugging Face https://huggingface.co/onnx-community/LFM2.5-350M-ONNX
+[6] Tool Use - Liquid Docs https://docs.liquid.ai/lfm/key-concepts/tool-use
+[7] LFM2.5-350M: No Size Left Behind - Liquid AI https://www.liquid.ai/blog/lfm2-5-350m-no-size-left-behind
+[8] mradermacher/Qwen3-0.6B-GGUF · Hugging Face - HF-Mirror https://api-inference.hf-mirror.com/mradermacher/Qwen3-0.6B-GGUF
+[9] H$_2$O: Heavy-Hitter Oracle for Efficient Generative Inference of Large
+  Language Models https://arxiv.org/pdf/2306.14048.pdf
+[10] Function Calling - Qwen https://qwen.readthedocs.io/en/latest/framework/function_call.html
+[11] Alibaba Cloud Model Studio:Function calling https://www.alibabacloud.com/help/en/model-studio/qwen-function-calling
+[12] Qwen/Qwen3-0.6B-GGUF - Hugging Face https://huggingface.co/Qwen/Qwen3-0.6B-GGUF
+[13] qwen3:0.6b/template - Ollama https://ollama.com/library/qwen3:0.6b/blobs/eb4402837c78
+[14] Liquid: Language Models are Scalable and Unified Multi-modal Generators http://arxiv.org/pdf/2412.04332.pdf
+[15] Phi-4-Mini-Instruct-GGUF Free Chat Online - skywork.ai, Click to Use! https://skywork.ai/blog/models/phi-4-mini-instruct-gguf-free-chat-online-skywork-ai/
+[16] Liquid AI releases LFM2.5-350M -> Agentic loops at 350M parameters https://www.reddit.com/r/LocalLLaMA/comments/1s8u1c1/liquid_ai_releases_lfm25350m_agentic_loops_at/
+[17] Microsoft Phi 4 Mini Reasoning GGUF https://model.aibase.com/models/details/1938445174913110016
+[18] jewelzufo/gemma-3-270m-it-GGUF:Q6_K/model https://ollama.com/jewelzufo/gemma-3-270m-it-GGUF:Q6_K/blobs/9826846190de
+[19] LLMCad: Fast and Scalable On-device Large Language Model Inference https://arxiv.org/pdf/2309.04255.pdf
+[20] QuantFactory/SmolLM2-360M-Instruct-GGUF - Hugging Face https://huggingface.co/QuantFactory/SmolLM2-360M-Instruct-GGUF
+[21] bartowski/SmolLM2-360M-Instruct-GGUF - Hugging Face https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF
+[22] How to Install & Run Gemma-3-270m, GGUF & Instruct Locally? https://dev.to/nodeshiftcloud/how-to-install-run-gemma-3-270m-gguf-instruct-locally-4nka
+[23] Fine-Tuning Liquid's LFM2.5: Accurate Tool Calling at 350M ... https://www.distillabs.ai/blog/fine-tuning-liquids-lfm25-accurate-tool-calling-at-350m-parameters/
+[24] 500 error due to unsupported roles in multiple models #2425 - GitHub https://github.com/containers/ramalama/issues/2425
+[25] bartowski/microsoft_Phi-4-mini-instruct-GGUF - Hugging Face https://huggingface.co/bartowski/microsoft_Phi-4-mini-instruct-GGUF
+[26] ggml-org/gemma-3-270m-it-qat-GGUF https://www.toolify.ai/ai-model/ggml-org-gemma-3-270m-it-qat-gguf
+[27] ggml-org/SmolVLM-500M-Instruct-GGUF - Hugging Face https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF
+[28] LiquidAI/LFM2.5-350M-GGUF - Hugging Face https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF
+[29] unsloth/Qwen3-0.6B-GGUF https://huggingface.co/unsloth/Qwen3-0.6B-GGUF
+[30] Inference with Tool Calling https://docs.gpustack.ai/0.7/tutorials/inference-with-tool-calling/
+[31] LMFlow: An Extensible Toolkit for Finetuning and Inference of Large
+  Foundation Models http://arxiv.org/pdf/2306.12420.pdf
+[32] LaMini-LM: A Diverse Herd of Distilled Models from Large-Scale
+  Instructions https://arxiv.org/pdf/2304.14402.pdf
+[33] h2oGPT: Democratizing Large Language Models https://arxiv.org/pdf/2306.08161.pdf
+[34] LiquidAI/LFM2.5-350M - Hugging Face https://huggingface.co/LiquidAI/LFM2.5-350M
+[35] mlabonne/Qwen3-0.6B-abliterated-GGUF - Hugging Face https://huggingface.co/mlabonne/Qwen3-0.6B-abliterated-GGUF
+[36] HuggingFaceTB/SmolLM2-360M-Instruct-GGUF · Hugging Face https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct-GGUF
+[37] bartowski/mlabonne_Qwen3-0.6B-abliterated-GGUF - Hugging Face https://huggingface.co/bartowski/mlabonne_Qwen3-0.6B-abliterated-GGUF
+[38] mradermacher/Qwen3-0.6B-abliterated-GGUF - Hugging Face https://huggingface.co/mradermacher/Qwen3-0.6B-abliterated-GGUF
+[39] OxW/Qwen3-0.6B-GGUF - Ollama https://ollama.com/OxW/Qwen3-0.6B-GGUF
+[40] mav23 / SmolLM2-360M-Instruct-GGUF - Toolify.ai https://www.toolify.ai/ai-model/mav23-smollm2-360m-instruct-gguf
+[41] Liquid LFM2.5: How To Run & Fine-tune | Unsloth Documentation https://unsloth.ai/docs/models/tutorials/lfm2.5
+[42] unsloth/Qwen3-0.6B-GGUF Free Chat Online - skywork.ai https://skywork.ai/blog/models/unsloth-qwen3-0-6b-gguf-free-chat-online-skywork-ai/
+[43] SmolLM2-CoT-360M-GGUF - Modelscope https://modelscope.cn/models/prithivMLmods/SmolLM2-CoT-360M-GGUF
+[44] SqueezeLLM: Dense-and-Sparse Quantization https://arxiv.org/pdf/2306.07629.pdf
+[45] SmoothQuant: Accurate and Efficient Post-Training Quantization for Large
+  Language Models https://arxiv.org/pdf/2211.10438.pdf
+[46] QLLM: Accurate and Efficient Low-Bitwidth Quantization for Large
+  Language Models https://arxiv.org/pdf/2310.08041.pdf
+[47] 大语言模型函数调用(Function Call) https://blog.csdn.net/m0_52919859/article/details/148080522
+[48] Function calling and structured outputs in LLMs with LangChain and ... https://dylancastillo.co/posts/function-calling-structured-outputs.html
+[49] SmolLM2-360M-Instruct-Q4_K_L.gguf - Hugging Face https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/blame/3c5574fd3917f9c38097adde918146821ac3bc07/SmolLM2-360M-Instruct-Q4_K_L.gguf
+[50] [Feature] support function call for Qwen3 models #6040 - GitHub https://github.com/sgl-project/sglang/issues/6040
