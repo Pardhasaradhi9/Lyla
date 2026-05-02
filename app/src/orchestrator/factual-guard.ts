@@ -12,35 +12,39 @@
  * Generate a contextual deflection response for real-time questions.
  * Acknowledges what the user asked and offers web search as a solution.
  */
-export function getFactualGuardResponse(userMessage: string): string {
+export function getFactualGuardResponse(userMessage: string, isOnline: boolean = false): string {
   const lower = userMessage.toLowerCase();
 
-  // Weather
   if (/\bweather|temperature|forecast|rain|sunny|cold|hot\b/.test(lower)) {
-    return `I don't have access to real-time weather data since I run offline on your device. Once web search is enabled, I'll be able to look that up for you! For now, you could check your phone's weather app.`;
+    return isOnline
+      ? `I don't have web search yet — it's coming soon! For now, check your weather app for current conditions.`
+      : `I'm offline right now so I can't look up weather data. Try again when you're connected, or check your weather app.`;
   }
 
-  // Prices / Finance
   if (/\bprice|cost|stock|crypto|bitcoin|gold|silver|market|exchange\s+rate\b/.test(lower)) {
-    return `I don't have access to live pricing or market data — I run entirely offline on your device. Want me to explain how something works instead, or would you prefer to check a financial app for current numbers?`;
+    return isOnline
+      ? `I don't have web search yet, but it's coming soon! For now, check a financial app for live numbers.`
+      : `I'm offline — I can't access market data without an internet connection. Check a financial app instead.`;
   }
 
-  // News / Current Events
   if (/\bnews|headline|happening|going\s+on|trending|election|update\b/.test(lower)) {
-    return `I'm running offline so I don't have access to current news or events. Once web search is live, I'll be able to pull the latest for you! In the meantime, is there something else I can help with?`;
+    return isOnline
+      ? `Web search is coming soon — for now I can't pull live news. Is there something else I can help with?`
+      : `I'm offline so I can't fetch news. Once you're connected again and web search is live, I'll be able to help!`;
   }
 
-  // Sports scores
   if (/\bscore|result|match|game|tournament|ipl|world\s+cup|champion\b/.test(lower)) {
-    return `I can't check live scores since I run offline — but once web search is enabled, I'll be able to look those up for you! Need help with anything else?`;
+    return isOnline
+      ? `I can't check live scores yet — web search is coming soon! Try a sports app for now.`
+      : `I'm offline and can't check scores. Connect to the internet and try again once web search is available!`;
   }
 
-  // Time / Date (the model sometimes gets this wrong)
   if (/\bwhat\s+(?:time|date)\s+is\s+it\b/.test(lower)) {
     const now = new Date();
     return `It's ${now.toLocaleTimeString()} on ${now.toLocaleDateString()}. Anything else?`;
   }
 
-  // Generic fallback for anything the guard catches
-  return `That's something I'd need real-time data for, and I run completely offline on your device. Web search is coming soon — for now, is there something else I can help with?`;
+  return isOnline
+    ? `That requires real-time data — web search is coming soon! Is there something else I can help with?`
+    : `I'm offline right now and can't look that up. Once you're connected and web search is available, I'll be able to help!`;
 }

@@ -16,6 +16,8 @@ import { MODELS } from '@/utils/constants';
 import Markdown from 'react-native-markdown-display';
 import { createOrchestrator, type Orchestrator } from '@/orchestrator';
 import { chatRepository } from '@/db/chat-repository';
+import { hapticLight, hapticSuccess, hapticError, hapticSelection } from '@/utils/haptics';
+import { speak, stopSpeaking } from '@/engines/tts';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -29,6 +31,11 @@ export default function HomeScreen() {
 
   // Chat State
   const { messages, addMessage, updateLastMessage, isGenerating, setIsGenerating, conversationId, setConversationId, loadConversation } = useChatStore();
+  const { autoPlayTTS, hapticsEnabled } = useSettingsStore();
+  
+  function maybeHaptic(fn: () => void) {
+    if (hapticsEnabled) fn();
+  }
   
   // Local UI State
   const [inputText, setInputText] = useState('');
@@ -122,6 +129,7 @@ export default function HomeScreen() {
     addMessage(userMsg);
     setInputText('');
     setIsGenerating(true);
+    maybeHaptic(() => hapticLight());
     
     const assistantMsgId = (Date.now() + 1).toString();
     addMessage({
@@ -177,9 +185,16 @@ export default function HomeScreen() {
         },
       );
 
-      // Use the clean formatted response as final content
       const finalContent = result.response || streamedContent;
       updateLastMessage(finalContent, true);
+
+      if (autoPlayTTS && finalContent) {
+        speak(finalContent, {
+          rate: useSettingsStore.getState().ttsRate,
+          pitch: useSettingsStore.getState().ttsPitch,
+          language: useSettingsStore.getState().ttsLanguage,
+        });
+      }
 
       // ── Persist assistant response to SQLite ──
       if (activeConvoId && finalContent) {
@@ -197,6 +212,7 @@ export default function HomeScreen() {
       }
     } catch (e) {
       console.error('Completion error:', e);
+      maybeHaptic(() => hapticError());
       updateLastMessage('Sorry, I encountered an error. Could you try again?', true);
     } finally {
       setIsGenerating(false);
@@ -205,9 +221,11 @@ export default function HomeScreen() {
 
   // Start a new conversation
   const handleNewChat = useCallback(() => {
+    stopSpeaking();
+    maybeHaptic(() => hapticSelection());
     const { clearChat } = useChatStore.getState();
     clearChat();
-  }, []);
+  }, [hapticsEnabled]);
 
   // ── Render Helpers ───────────────────────────────────────────────
   const MessageBubble = ({ item }: { item: Message }) => {
@@ -215,6 +233,7 @@ export default function HomeScreen() {
     const [copied, setCopied] = useState(false);
     const [memorySaved, setMemorySaved] = useState(false);
     const [tooLong, setTooLong] = useState(false);
+    const [speaking, setSpeaking] = useState(false);
     const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isUser = item.role === 'user';
     const content = item.content;
@@ -259,6 +278,7 @@ export default function HomeScreen() {
     const handleCopy = useCallback(async () => {
       if (!content) return;
       await Clipboard.setStringAsync(content);
+      maybeHaptic(() => hapticSuccess());
       setCopied(true);
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
       feedbackTimerRef.current = setTimeout(() => {
@@ -266,6 +286,23 @@ export default function HomeScreen() {
         setShowCopy(false);
       }, 1500);
     }, [content]);
+
+    const handleSpeak = useCallback(async () => {
+      if (!content || isUser) return;
+      if (speaking) {
+        stopSpeaking();
+        setSpeaking(false);
+        return;
+      }
+      setSpeaking(true);
+      maybeHaptic(() => hapticLight());
+      speak(content, {
+        rate: useSettingsStore.getState().ttsRate,
+        pitch: useSettingsStore.getState().ttsPitch,
+        language: useSettingsStore.getState().ttsLanguage,
+      });
+      setTimeout(() => setSpeaking(false), content.length * 60 + 1000);
+    }, [content, speaking, isUser]);
 
     const handleLongPress = useCallback(async () => {
       if (item.isStreaming || memorySaved || !content) return;
@@ -282,6 +319,7 @@ export default function HomeScreen() {
         const { extractFactOrRaw } = require('@/orchestrator/fact-extractor');
         const extracted = extractFactOrRaw(content);
         await memoryEngine.addMemory(extracted.fact, extracted.entity || undefined, extracted.category);
+        maybeHaptic(() => hapticSuccess());
         setMemorySaved(true);
         if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
         feedbackTimerRef.current = setTimeout(() => setMemorySaved(false), 2000);
@@ -316,9 +354,16 @@ export default function HomeScreen() {
             renderContent()
           )}
           {showCopy && !item.isStreaming && !copied && !memorySaved && (
-            <Pressable style={styles.feedbackBadge} onPress={handleCopy} hitSlop={8}>
-              <Ionicons name="copy-outline" size={14} color="#fff" />
-            </Pressable>
+            <View style={styles.feedbackRow}>
+              {!isUser && (
+                <Pressable style={styles.feedbackBadge} onPress={handleSpeak} hitSlop={8}>
+                  <Ionicons name={speaking ? 'stop' : 'volume-high-outline'} size={14} color="#fff" />
+                </Pressable>
+              )}
+              <Pressable style={styles.feedbackBadge} onPress={handleCopy} hitSlop={8}>
+                <Ionicons name="copy-outline" size={14} color="#fff" />
+              </Pressable>
+            </View>
           )}
           {copied && (
             <View style={styles.feedbackBadge}>
@@ -758,6 +803,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  feedbackRow: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    flexDirection: 'row',
+    gap: 4,
   },
   feedbackText: {
     color: '#fff',

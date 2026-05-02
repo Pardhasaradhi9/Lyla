@@ -2,7 +2,7 @@
  * Settings Screen
  */
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Pressable, ScrollView, Alert, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
@@ -17,7 +17,7 @@ import { memoryRepository } from '@/db/memory-repository';
 export default function SettingsScreen() {
   const router = useRouter();
   const modelStatus = useAppStore((s) => s.modelStatus);
-  const { autoPlayTTS, ttsRate, memoryEnabled } = useSettingsStore();
+  const { autoPlayTTS, ttsRate, memoryEnabled, hapticsEnabled, setAutoPlayTTS, setMemoryEnabled, setHapticsEnabled } = useSettingsStore();
   const [memoryCount, setMemoryCount] = useState(0);
 
   useEffect(() => {
@@ -60,10 +60,11 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="Voice">
-          <SettingsRow
+          <SettingsToggleRow
             icon="volume-high-outline"
             label="Auto-play responses"
-            value={autoPlayTTS ? 'On' : 'Off'}
+            value={autoPlayTTS}
+            onValueChange={setAutoPlayTTS}
           />
           <SettingsRow
             icon="speedometer-outline"
@@ -72,11 +73,21 @@ export default function SettingsScreen() {
           />
         </SettingsSection>
 
+        <SettingsSection title="Haptics">
+          <SettingsToggleRow
+            icon="phone-vibrate-outline"
+            label="Haptic feedback"
+            value={hapticsEnabled}
+            onValueChange={setHapticsEnabled}
+          />
+        </SettingsSection>
+
         <SettingsSection title="Memory">
-          <SettingsRow
+          <SettingsToggleRow
             icon="sparkles-outline"
             label="Memory enabled"
-            value={memoryEnabled ? 'On' : 'Off'}
+            value={memoryEnabled}
+            onValueChange={setMemoryEnabled}
           />
           <SettingsRow
             icon="list-outline"
@@ -160,6 +171,36 @@ function SettingsRow({
       />
       <Text style={[styles.rowLabel, destructive && styles.rowLabelDestructive]}>{label}</Text>
       <Text style={styles.rowValue}>{value}</Text>
+    </View>
+  );
+}
+
+function SettingsToggleRow({
+  icon,
+  label,
+  value,
+  onValueChange,
+}: {
+  icon: string;
+  label: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  return (
+    <View style={styles.row}>
+      <Ionicons
+        name={icon as any}
+        size={20}
+        color={colors.accent.primaryLight}
+      />
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: colors.background.tertiary, true: colors.accent.primary }}
+        thumbColor="#fff"
+        style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+      />
     </View>
   );
 }

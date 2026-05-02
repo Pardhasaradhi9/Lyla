@@ -152,4 +152,60 @@ export function registerBuiltinTools(): void {
       return { success: false, data: 'No matching memory found.' };
     },
   });
+
+  registerTool({
+    name: 'clipboard_read',
+    description: 'Read the current contents of the device clipboard',
+    parameters: [],
+    requiresPermission: false,
+    category: 'personal',
+    execute: async () => {
+      const Clipboard = await import('expo-clipboard');
+      const hasContent = await Clipboard.default.hasStringAsync();
+      if (!hasContent) {
+        return { success: true, data: 'The clipboard is empty.' };
+      }
+      const content = await Clipboard.default.getStringAsync();
+      const preview = content.length > 500 ? content.slice(0, 500) + '...' : content;
+      return { success: true, data: preview };
+    },
+  });
+
+  registerTool({
+    name: 'clipboard_write',
+    description: 'Write text to the device clipboard',
+    parameters: [
+      { name: 'text', type: 'string', required: true, description: 'The text to copy to clipboard' },
+    ],
+    requiresPermission: false,
+    category: 'personal',
+    execute: async (params) => {
+      const Clipboard = await import('expo-clipboard');
+      const text = (params?.text as string) || '';
+      if (!text) {
+        return { success: false, data: 'No text provided to copy.' };
+      }
+      await Clipboard.default.setStringAsync(text);
+      return { success: true, data: `Copied to clipboard: "${text.slice(0, 80)}${text.length > 80 ? '...' : ''}"` };
+    },
+  });
+
+  registerTool({
+    name: 'tts_speak',
+    description: 'Read text aloud using the device text-to-speech engine',
+    parameters: [
+      { name: 'text', type: 'string', required: true, description: 'The text to speak aloud' },
+    ],
+    requiresPermission: false,
+    category: 'system',
+    execute: async (params) => {
+      const { speak } = await import('@/engines/tts');
+      const text = (params?.text as string) || '';
+      if (!text) {
+        return { success: false, data: 'No text provided to speak.' };
+      }
+      speak(text);
+      return { success: true, data: `Speaking: "${text.slice(0, 60)}${text.length > 60 ? '...' : ''}"` };
+    },
+  });
 }

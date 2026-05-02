@@ -8,7 +8,7 @@
  * thanks, praise, etc. naturally via the system prompt.
  */
 
-export type Intent = 'memory_query' | 'memory_forget' | 'time_query' | 'battery_query' | 'device_query' | 'identity_query' | 'limitations_query' | 'factual_realtime' | 'chat';
+export type Intent = 'memory_query' | 'memory_forget' | 'time_query' | 'battery_query' | 'device_query' | 'identity_query' | 'limitations_query' | 'factual_realtime' | 'clipboard_read' | 'clipboard_write' | 'tts_speak' | 'chat';
 
 interface ClassificationResult {
   intent: Intent;
@@ -130,6 +130,38 @@ const PATTERNS: Array<{ intent: Intent; patterns: RegExp[]; confidence: 'high' |
       /\bwhat\s*(?:'s|is)\s+(?:happening|going\s+on)\s+(?:in|today|now)\b/,
       /\b(?:latest|breaking|recent|today'?s?)\s+news\b/,
       /\bwhat'?s?\s+(?:trending|viral)\b/,
+    ],
+  },
+  {
+    intent: 'clipboard_read',
+    confidence: 'high',
+    patterns: [
+      /\bwhat(?:'s| is)\s+(?:on\s+)?(?:my\s+)?clipboard\b/,
+      /\bwhat\s+did\s+i\s+copy\b/,
+      /\bread\s+(?:my|the)\s+clipboard\b/,
+      /\bshow\s+(?:me\s+)?(?:my\s+)?clipboard\b/,
+      /\b(?:summarize|summarise|explain)\s+(?:what\s+i\s+)?copied\b/,
+      /\b(?:check|tell\s+me)\s+(?:what(?:'s| is)\s+)?(?:on\s+)?(?:my\s+)?clipboard\b/,
+    ],
+  },
+  {
+    intent: 'clipboard_write',
+    confidence: 'high',
+    patterns: [
+      /\bcopy\s+(?:that|this|it|your|the)\s+(?:response|answer|message|text)?\s*(?:to\s+)?(?:clipboard)?\b/,
+      /\bcopy\s+(?:to\s+)?clipboard\b/,
+      /\b(?:put|save|write)\s+(?:that|this|it)\s+(?:on|to|in)\s+(?:my\s+)?clipboard\b/,
+    ],
+  },
+  {
+    intent: 'tts_speak',
+    confidence: 'high',
+    patterns: [
+      /\bread\s+(?:that|this|it|your|the)\s+(?:back|aloud|out\s+loud)\b/,
+      /\bsay\s+(?:that|this|it)\s+(?:aloud|out\s+loud)?\b/,
+      /\bspeak\s+(?:your|the|that)\s+(?:response|answer|message)\b/,
+      /\bread\s+(?:out|aloud)\b/,
+      /\bsay\s+it\b/,
     ],
   },
 ];

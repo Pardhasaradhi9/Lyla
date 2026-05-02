@@ -5,25 +5,21 @@
 import { create } from 'zustand';
 
 interface SettingsState {
-  // ── Model ───────────────────────────────────────────────────────
   selectedModel: 'primary' | 'speed';
-
-  // ── Voice ───────────────────────────────────────────────────────
   autoPlayTTS: boolean;
   ttsRate: number;
   ttsPitch: number;
   ttsLanguage: string;
-
-  // ── Privacy ─────────────────────────────────────────────────────
   memoryEnabled: boolean;
+  hapticsEnabled: boolean;
 
-  // ── Actions ─────────────────────────────────────────────────────
   setSelectedModel: (model: 'primary' | 'speed') => void;
   setAutoPlayTTS: (autoPlay: boolean) => void;
   setTTSRate: (rate: number) => void;
   setTTSPitch: (pitch: number) => void;
   setTTSLanguage: (language: string) => void;
   setMemoryEnabled: (enabled: boolean) => void;
+  setHapticsEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -33,6 +29,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   ttsPitch: 1.0,
   ttsLanguage: 'en-US',
   memoryEnabled: true,
+  hapticsEnabled: true,
 
   setSelectedModel: (model) => set({ selectedModel: model }),
   setAutoPlayTTS: (autoPlay) => set({ autoPlayTTS: autoPlay }),
@@ -40,4 +37,5 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setTTSPitch: (pitch) => set({ ttsPitch: pitch }),
   setTTSLanguage: (language) => set({ ttsLanguage: language }),
   setMemoryEnabled: (enabled) => set({ memoryEnabled: enabled }),
+  setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
 }));

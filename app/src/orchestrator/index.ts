@@ -3,9 +3,10 @@ import { getFactualGuardResponse } from './factual-guard';
 import { getIdentityResponse } from './identity-handler';
 import { handleTimeQuery, handleBatteryQuery, handleDeviceQuery } from './device-handlers';
 import { formatModelResponse, formatStreamingToken } from './response-formatter';
-import { executeTool, registerBuiltinTools, type ToolResult } from './tool-registry';
-import { buildSystemState, formatSystemStateForPrompt, type SystemState } from './system-state';
+import { executeTool, registerBuiltinTools } from './tool-registry';
+import { buildSystemState, formatSystemStateForPrompt } from './system-state';
 import { extractFacts } from './fact-extractor';
+import { useAppStore } from '@/stores/app-store';
 
 export interface OrchestratorResult {
   response: string;
@@ -81,10 +82,69 @@ export function createOrchestrator(config: OrchestratorConfig) {
         };
       }
 
+      // ── 3b. ROUTE: Clipboard tools ────────────────────────────────
+
+      if (intent === 'clipboard_read') {
+        const result = await executeTool('clipboard_read');
+        if (result.data === 'The clipboard is empty.') {
+          return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+        }
+        const hasSummarize = /\b(summarize|summarise|explain|what does|what does this mean)\b/i.test(userMessage);
+        if (hasSummarize && config.isModelReady()) {
+          const { SYSTEM_PROMPT } = await import('@/utils/system-prompt');
+          const messages = [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: `I copied this text. Please summarize or explain it:\n\n${result.data}` },
+          ];
+          try {
+            let raw = '';
+            raw = await config.streamCompletion(messages, onToken ? (t) => { const c = formatStreamingToken(t); if (c) onToken(c); } : () => {});
+            const { response } = formatModelResponse(raw);
+            return { response, handledBy: 'model', intent, wasStreamed: true };
+          } catch {
+            return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+          }
+        }
+        return { response: `Here's what's on your clipboard:\n\n${result.data}`, handledBy: 'tool', intent, wasStreamed: false };
+      }
+
+      if (intent === 'clipboard_write') {
+        const history = conversationHistory;
+        let lastAssistantMsg = '';
+        for (let i = history.length - 1; i >= 0; i--) {
+          if (history[i].role === 'assistant') {
+            lastAssistantMsg = history[i].content;
+            break;
+          }
+        }
+        const textToCopy = lastAssistantMsg || userMessage.replace(/\bcopy\s+/i, '').replace(/\bto\s+clipboard\b/i, '').trim();
+        const result = await executeTool('clipboard_write', { text: textToCopy });
+        return { response: result.success ? "Done! I've copied that to your clipboard." : result.data, handledBy: 'tool', intent, wasStreamed: false };
+      }
+
+      // ── 3c. ROUTE: TTS tool ───────────────────────────────────────
+
+      if (intent === 'tts_speak') {
+        const history = conversationHistory;
+        let lastAssistantMsg = '';
+        for (let i = history.length - 1; i >= 0; i--) {
+          if (history[i].role === 'assistant') {
+            lastAssistantMsg = history[i].content;
+            break;
+          }
+        }
+        if (!lastAssistantMsg) {
+          return { response: "I don't have a previous response to read back yet!", handledBy: 'tool', intent, wasStreamed: false };
+        }
+        const result = await executeTool('tts_speak', { text: lastAssistantMsg });
+        return { response: result.success ? "Reading it back to you now..." : result.data, handledBy: 'tool', intent, wasStreamed: false };
+      }
+
       // ── 4. ROUTE: Factual guard (until web search) ─────────────
 
       if (intent === 'factual_realtime') {
-        return { response: getFactualGuardResponse(userMessage), handledBy: 'factual_guard', intent, wasStreamed: false };
+        const online = useAppStore.getState().isOnline;
+        return { response: getFactualGuardResponse(userMessage, online), handledBy: 'factual_guard', intent, wasStreamed: false };
       }
 
       // ── 5. REASON: Complex query → Brain with system state ─────
