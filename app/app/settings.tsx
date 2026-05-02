@@ -17,7 +17,7 @@ import { memoryRepository } from '@/db/memory-repository';
 export default function SettingsScreen() {
   const router = useRouter();
   const modelStatus = useAppStore((s) => s.modelStatus);
-  const { autoPlayTTS, ttsRate, memoryEnabled, hapticsEnabled, setAutoPlayTTS, setMemoryEnabled, setHapticsEnabled } = useSettingsStore();
+  const { autoPlayTTS, ttsRate, memoryEnabled, hapticsEnabled, biometricLockEnabled, setAutoPlayTTS, setMemoryEnabled, setHapticsEnabled, setBiometricLockEnabled } = useSettingsStore();
   const [memoryCount, setMemoryCount] = useState(0);
 
   useEffect(() => {
@@ -125,12 +125,21 @@ export default function SettingsScreen() {
           )}
         </SettingsSection>
 
-        <SettingsSection title="About">
+        <SettingsSection title="Security">
+          <SettingsToggleRow
+            icon="lock-closed-outline"
+            label="Biometric lock"
+            value={biometricLockEnabled}
+            onValueChange={setBiometricLockEnabled}
+          />
           <SettingsRow
             icon="shield-checkmark-outline"
             label="Privacy"
             value="100% on-device"
           />
+        </SettingsSection>
+
+        <SettingsSection title="About">
           <SettingsRow
             icon="information-circle-outline"
             label="Version"

@@ -12,6 +12,7 @@ interface SettingsState {
   ttsLanguage: string;
   memoryEnabled: boolean;
   hapticsEnabled: boolean;
+  biometricLockEnabled: boolean;
 
   setSelectedModel: (model: 'primary' | 'speed') => void;
   setAutoPlayTTS: (autoPlay: boolean) => void;
@@ -20,6 +21,7 @@ interface SettingsState {
   setTTSLanguage: (language: string) => void;
   setMemoryEnabled: (enabled: boolean) => void;
   setHapticsEnabled: (enabled: boolean) => void;
+  setBiometricLockEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -30,6 +32,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   ttsLanguage: 'en-US',
   memoryEnabled: true,
   hapticsEnabled: true,
+  biometricLockEnabled: false,
 
   setSelectedModel: (model) => set({ selectedModel: model }),
   setAutoPlayTTS: (autoPlay) => set({ autoPlayTTS: autoPlay }),
@@ -38,4 +41,5 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setTTSLanguage: (language) => set({ ttsLanguage: language }),
   setMemoryEnabled: (enabled) => set({ memoryEnabled: enabled }),
   setHapticsEnabled: (enabled) => set({ hapticsEnabled: enabled }),
+  setBiometricLockEnabled: (enabled) => set({ biometricLockEnabled: enabled }),
 }));

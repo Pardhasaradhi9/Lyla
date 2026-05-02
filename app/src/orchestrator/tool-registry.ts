@@ -208,4 +208,142 @@ export function registerBuiltinTools(): void {
       return { success: true, data: `Speaking: "${text.slice(0, 60)}${text.length > 60 ? '...' : ''}"` };
     },
   });
+
+  registerTool({
+    name: 'calendar_query',
+    description: 'Read today\'s calendar events and upcoming schedule',
+    parameters: [
+      { name: 'days', type: 'number', required: false, description: 'Number of upcoming days to show (default: 0 for today only)' },
+    ],
+    requiresPermission: true,
+    category: 'personal',
+    execute: async (params) => {
+      const { getTodayEvents, getUpcomingEvents } = await import('@/tools/calendar-tool');
+      const days = (params?.days as number) || 0;
+      if (days > 0) {
+        const upcoming = await getUpcomingEvents(days);
+        return { success: true, data: upcoming || 'No upcoming events.' };
+      }
+      return { success: true, data: await getTodayEvents() };
+    },
+  });
+
+  registerTool({
+    name: 'calendar_create',
+    description: 'Create a new calendar event with title, date/time, and optional location',
+    parameters: [
+      { name: 'title', type: 'string', required: true, description: 'Event title' },
+      { name: 'startDate', type: 'string', required: true, description: 'ISO date string or natural language like "tomorrow at 3pm"' },
+      { name: 'durationMinutes', type: 'number', required: false, description: 'Duration in minutes (default: 60)' },
+      { name: 'location', type: 'string', required: false, description: 'Event location' },
+    ],
+    requiresPermission: true,
+    category: 'personal',
+    execute: async (params) => {
+      const { createEvent } = await import('@/tools/calendar-tool');
+      const title = (params?.title as string) || 'New Event';
+      const startDateStr = params?.startDate as string;
+      const duration = (params?.durationMinutes as number) || 60;
+      const location = params?.location as string | undefined;
+
+      let startDate: Date;
+      try {
+        startDate = new Date(startDateStr);
+        if (isNaN(startDate.getTime())) throw new Error('Invalid date');
+      } catch {
+        return { success: false, data: `Couldn't parse the date "${startDateStr}". Try something like "tomorrow at 3pm".` };
+      }
+
+      const endDate = new Date(startDate.getTime() + duration * 60000);
+      return { success: true, data: await createEvent(title, startDate, endDate, location) };
+    },
+  });
+
+  registerTool({
+    name: 'contact_lookup',
+    description: 'Search contacts by name and return phone number, email, and birthday',
+    parameters: [
+      { name: 'name', type: 'string', required: true, description: 'Contact name to search for' },
+    ],
+    requiresPermission: true,
+    category: 'personal',
+    execute: async (params) => {
+      const { lookupContact } = await import('@/tools/contacts-tool');
+      const name = (params?.name as string) || '';
+      if (!name) return { success: false, data: 'No name provided.' };
+      return { success: true, data: await lookupContact(name) };
+    },
+  });
+
+  registerTool({
+    name: 'reminder_create',
+    description: 'Schedule a reminder notification at a specific time',
+    parameters: [
+      { name: 'text', type: 'string', required: true, description: 'What to remind about' },
+      { name: 'time', type: 'string', required: true, description: 'When to remind (e.g. "5pm", "in 30 minutes")' },
+    ],
+    requiresPermission: true,
+    category: 'personal',
+    execute: async (params) => {
+      const { createReminder } = await import('@/tools/reminder-tool');
+      const text = (params?.text as string) || '';
+      const timeStr = (params?.time as string) || '';
+      if (!text || !timeStr) return { success: false, data: 'Need both reminder text and time.' };
+
+      const triggerDate = parseReminderTime(timeStr);
+      if (!triggerDate) return { success: false, data: `Couldn't parse "${timeStr}" as a time. Try "at 5pm" or "in 30 minutes".` };
+
+      return { success: true, data: await createReminder(text, triggerDate) };
+    },
+  });
+
+  registerTool({
+    name: 'reminder_list',
+    description: 'List all active scheduled reminders',
+    parameters: [],
+    requiresPermission: false,
+    category: 'personal',
+    execute: async () => {
+      const { listReminders } = await import('@/tools/reminder-tool');
+      return { success: true, data: await listReminders() };
+    },
+  });
+}
+
+function parseReminderTime(input: string): Date | null {
+  const now = new Date();
+  const lower = input.toLowerCase().trim();
+
+  const inMatch = lower.match(/^in\s+(\d+)\s*(min|minute|minutes|hr|hour|hours|sec|second|seconds)/);
+  if (inMatch) {
+    const amount = parseInt(inMatch[1], 10);
+    const unit = inMatch[2];
+    if (unit.startsWith('min')) return new Date(now.getTime() + amount * 60000);
+    if (unit.startsWith('hr') || unit.startsWith('hour')) return new Date(now.getTime() + amount * 3600000);
+    if (unit.startsWith('sec')) return new Date(now.getTime() + amount * 1000);
+  }
+
+  const timeMatch = lower.match(/(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+    const ampm = timeMatch[3]?.toLowerCase();
+
+    if (ampm === 'pm' && hours < 12) hours += 12;
+    if (ampm === 'am' && hours === 12) hours = 0;
+
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    return target;
+  }
+
+  if (lower.includes('tomorrow')) {
+    const timeInTomorrow = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(timeInTomorrow ? parseInt(timeInTomorrow[1], 10) + (timeInTomorrow[3]?.toLowerCase() === 'pm' ? 12 : 0) : 9, timeInTomorrow?.[2] ? parseInt(timeInTomorrow[2], 10) : 0, 0);
+    return tomorrow;
+  }
+
+  return null;
 }

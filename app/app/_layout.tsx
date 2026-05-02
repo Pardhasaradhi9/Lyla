@@ -4,17 +4,19 @@
  * Configures the navigation stack, dark theme, network listener,
  * and system UI (status bar, background color).
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { LogBox } from 'react-native';
+import { LogBox, View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as SystemUI from 'expo-system-ui';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
 import { colors } from '@/theme/colors';
 import { useAppStore } from '@/stores/app-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { onNetworkChange, isOnline } from '@/utils/network';
 import { initDatabase } from '@/db/database';
+import { isBiometricAvailable, authenticate } from '@/tools/biometric-lock';
 
 // Set the root background to match our dark theme
 SystemUI.setBackgroundColorAsync(colors.background.primary);
@@ -28,26 +30,69 @@ LogBox.ignoreLogs([
 export default function RootLayout() {
   const setIsOnline = useAppStore((s) => s.setIsOnline);
   const setIsAppReady = useAppStore((s) => s.setIsAppReady);
+  const biometricLockEnabled = useSettingsStore((s) => s.biometricLockEnabled);
+  const [isLocked, setIsLocked] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   useEffect(() => {
-    // Initialize database (creates tables if they don't exist)
     initDatabase()
       .then(() => console.log('[App] Database ready'))
       .catch((e) => console.error('[App] Database init failed:', e));
 
-    // Check initial network state
     isOnline().then(setIsOnline);
-
-    // Subscribe to network changes
     const unsubscribe = onNetworkChange(setIsOnline);
-
-    // Mark app as ready
     setIsAppReady(true);
 
     return () => {
       unsubscribe();
     };
   }, [setIsOnline, setIsAppReady]);
+
+  useEffect(() => {
+    if (!biometricLockEnabled) {
+      setIsLocked(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const available = await isBiometricAvailable();
+      if (!available || cancelled) {
+        setIsLocked(false);
+        return;
+      }
+      setIsAuthenticating(true);
+      const success = await authenticate('Unlock Lyla');
+      if (!cancelled) {
+        setIsLocked(!success);
+        setIsAuthenticating(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [biometricLockEnabled]);
+
+  if (isLocked && biometricLockEnabled) {
+    return (
+      <View style={lockStyles.container}>
+        <StatusBar style="light" />
+        <Text style={lockStyles.title}>Lyla</Text>
+        {isAuthenticating ? (
+          <ActivityIndicator color={colors.accent.primary} size="large" />
+        ) : (
+          <Pressable style={lockStyles.unlockButton} onPress={async () => {
+            setIsAuthenticating(true);
+            const success = await authenticate('Unlock Lyla');
+            setIsLocked(!success);
+            setIsAuthenticating(false);
+          }}>
+            <Ionicons name="lock-closed-outline" size={32} color={colors.accent.primary} />
+            <Text style={lockStyles.unlockText}>Tap to unlock</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -77,5 +122,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+});
+
+const lockStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 24,
+  },
+  title: {
+    fontSize: 40,
+    fontWeight: '700',
+    color: colors.text.primary,
+    letterSpacing: -1,
+  },
+  unlockButton: {
+    alignItems: 'center',
+    gap: 12,
+    padding: 20,
+  },
+  unlockText: {
+    fontSize: 16,
+    color: colors.accent.primary,
   },
 });

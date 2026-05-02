@@ -8,7 +8,7 @@
  * thanks, praise, etc. naturally via the system prompt.
  */
 
-export type Intent = 'memory_query' | 'memory_forget' | 'time_query' | 'battery_query' | 'device_query' | 'identity_query' | 'limitations_query' | 'factual_realtime' | 'clipboard_read' | 'clipboard_write' | 'tts_speak' | 'chat';
+export type Intent = 'memory_query' | 'memory_forget' | 'time_query' | 'battery_query' | 'device_query' | 'identity_query' | 'limitations_query' | 'factual_realtime' | 'clipboard_read' | 'clipboard_write' | 'tts_speak' | 'calendar_query' | 'calendar_create' | 'contact_lookup' | 'reminder_create' | 'reminder_list' | 'chat';
 
 interface ClassificationResult {
   intent: Intent;
@@ -162,6 +162,57 @@ const PATTERNS: Array<{ intent: Intent; patterns: RegExp[]; confidence: 'high' |
       /\bspeak\s+(?:your|the|that)\s+(?:response|answer|message)\b/,
       /\bread\s+(?:out|aloud)\b/,
       /\bsay\s+it\b/,
+    ],
+  },
+  {
+    intent: 'calendar_query',
+    confidence: 'high',
+    patterns: [
+      /\bwhat'?s?\s+(?:on\s+)?(?:my\s+)?(?:schedule|calendar|agenda)\b/,
+      /\b(?:what|any)\s+(?:events|meetings|appointments)\s+(?:do\s+i\s+have|today|tomorrow|this\s+week)\b/,
+      /\b(?:show|check)\s+(?:me\s+)?(?:my\s+)?(?:schedule|calendar|agenda|events)\b/,
+      /\b(?:today'?s?|tomorrow'?s?)\s+(?:schedule|calendar|agenda|events|meetings)\b/,
+      /\bwhat\s+am\s+i\s+doing\s+(?:today|tomorrow|this\s+week)\b/,
+      /\b(?:do\s+i\s+have|any)\s+(?:anything|meetings|events)\s+(?:today|tomorrow|scheduled|coming\s+up)\b/,
+      /\b(?:upcoming|next)\s+(?:events|meetings|appointments|schedule)\b/,
+    ],
+  },
+  {
+    intent: 'calendar_create',
+    confidence: 'high',
+    patterns: [
+      /\b(?:add|create|schedule|put|set)\s+(?:a\s+)?(?:meeting|event|appointment)\b/,
+      /\b(?:add|put|schedule)\s+(?:it|this)\s+(?:on|to)\s+(?:my\s+)?(?:calendar|schedule)\b/,
+      /\b(?:book|block)\s+(?:time|a\s+meeting|an\s+event)\b/,
+    ],
+  },
+  {
+    intent: 'contact_lookup',
+    confidence: 'high',
+    patterns: [
+      /\bwhat'?s?\s+(?:\w+'s|my\s+\w+'s?)\s+(?:phone|number|email|birthday|contact)\b/,
+      /\b(?:look\s+up|find|get|search)\s+(?:\w+'s|the)\s+(?:phone|number|email|contact|info)\b/,
+      /\b(?:do\s+you\s+)?(?:know|have)\s+(?:\w+'s|the)\s+(?:phone|number|email)\b/,
+      /\bcontact\s+(?:info(?:rmation)?)?\s+(?:for|of)\s+/,
+    ],
+  },
+  {
+    intent: 'reminder_create',
+    confidence: 'high',
+    patterns: [
+      /\bremind\s+me\s+(?:to|about|at)\b/,
+      /\bset\s+(?:a\s+)?reminder\b/,
+      /\bnotify\s+me\s+(?:at|to|about)\b/,
+      /\bdon'?t\s+(?:let\s+me\s+)?forget\b/,
+      /\bmake\s+(?:sure|a\s+reminder)\b/,
+    ],
+  },
+  {
+    intent: 'reminder_list',
+    confidence: 'high',
+    patterns: [
+      /\b(?:show|list|what\s+(?:are|is))\s+(?:my\s+)?(?:active\s+)?reminders?\b/,
+      /\b(?:what|any)\s+reminders\s+(?:do\s+i\s+have|are\s+set)\b/,
     ],
   },
 ];

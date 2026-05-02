@@ -140,6 +140,65 @@ export function createOrchestrator(config: OrchestratorConfig) {
         return { response: result.success ? "Reading it back to you now..." : result.data, handledBy: 'tool', intent, wasStreamed: false };
       }
 
+      // ── 3d. ROUTE: Calendar tools ─────────────────────────────────
+
+      if (intent === 'calendar_query') {
+        const days = /\b(?:upcoming|next|this\s+week)\b/i.test(userMessage) ? 7 : 0;
+        const result = await executeTool('calendar_query', { days });
+        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+      }
+
+      if (intent === 'calendar_create') {
+        const titleMatch = userMessage.match(/(?:meeting|event|appointment)(?:\s+(?:with|for|about))?\s+(.+?)(?:\s+(?:tomorrow|today|at|on|next)\b|$)/i);
+        const title = titleMatch?.[1]?.trim() || userMessage.replace(/^(?:add|create|schedule|put)\s+(?:a\s+)?/i, '').trim();
+
+        const timeStr = extractTimeFromMessage(userMessage);
+        if (!timeStr) {
+          return { response: "I'd love to create that event, but I need to know when. Can you tell me the date and time? For example: 'Add meeting with Sarah tomorrow at 3pm'", handledBy: 'tool', intent, wasStreamed: false };
+        }
+
+        const result = await executeTool('calendar_create', { title, startDate: timeStr.toISOString(), durationMinutes: 60 });
+        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+      }
+
+      // ── 3e. ROUTE: Contacts tool ───────────────────────────────────
+
+      if (intent === 'contact_lookup') {
+        const nameMatch = userMessage.match(/(?:phone|number|email|birthday|contact|info)\s+(?:for|of|is\s+)?\s*(\w+(?:\s+\w+)?)/i)
+          || userMessage.match(/(\w+)'s\s+(?:phone|number|email|birthday|contact)/i);
+        const name = nameMatch?.[1]?.trim() || '';
+        if (!name) {
+          return { response: "Who should I look up? Tell me a name and I'll search your contacts.", handledBy: 'tool', intent, wasStreamed: false };
+        }
+        const result = await executeTool('contact_lookup', { name });
+        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+      }
+
+      // ── 3f. ROUTE: Reminders tools ─────────────────────────────────
+
+      if (intent === 'reminder_create') {
+        const textMatch = userMessage.match(/remind\s+me\s+(?:to|about)\s+(.+?)(?:\s+(?:at|in|by|on)\b|$)/i)
+          || userMessage.match(/(?:set\s+(?:a\s+)?reminder|notify\s+me)\s+(?:to|about)?\s*(.+?)(?:\s+(?:at|in|by|on)\b|$)/i);
+        const text = textMatch?.[1]?.trim() || '';
+        const timeMatch = userMessage.match(/(?:at|in|by)\s+(.+?)$/i);
+        const timeStr = timeMatch?.[1]?.trim() || '';
+
+        if (!text) {
+          return { response: "What should I remind you about? Try: 'Remind me to call mom at 5pm'", handledBy: 'tool', intent, wasStreamed: false };
+        }
+        if (!timeStr) {
+          return { response: "When should I remind you? Try: 'Remind me to call mom at 5pm' or 'Remind me to buy milk in 30 minutes'", handledBy: 'tool', intent, wasStreamed: false };
+        }
+
+        const result = await executeTool('reminder_create', { text, time: timeStr });
+        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+      }
+
+      if (intent === 'reminder_list') {
+        const result = await executeTool('reminder_list');
+        return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+      }
+
       // ── 4. ROUTE: Factual guard (until web search) ─────────────
 
       if (intent === 'factual_realtime') {
@@ -223,6 +282,52 @@ function autoExtractFacts(userMessage: string, assistantResponse: string): void 
       }
     }).catch(() => {});
   } catch {}
+}
+
+function extractTimeFromMessage(message: string): Date | null {
+  const now = new Date();
+  const lower = message.toLowerCase();
+
+  if (lower.includes('tomorrow')) {
+    const timeMatch = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (timeMatch) {
+      let h = parseInt(timeMatch[1], 10);
+      const m = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+      if (timeMatch[3]?.toLowerCase() === 'pm' && h < 12) h += 12;
+      if (timeMatch[3]?.toLowerCase() === 'am' && h === 12) h = 0;
+      tomorrow.setHours(h, m, 0);
+    } else {
+      tomorrow.setHours(9, 0, 0);
+    }
+    return tomorrow;
+  }
+
+  const todayMatch = lower.match(/(?:today\s+)?(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if (todayMatch) {
+    let h = parseInt(todayMatch[1], 10);
+    const m = todayMatch[2] ? parseInt(todayMatch[2], 10) : 0;
+    if (todayMatch[3]?.toLowerCase() === 'pm' && h < 12) h += 12;
+    if (todayMatch[3]?.toLowerCase() === 'am' && h === 12) h = 0;
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    return target;
+  }
+
+  const inMatch = lower.match(/in\s+(\d+)\s*(min|minute|hour|hr)/i);
+  if (inMatch) {
+    const amount = parseInt(inMatch[1], 10);
+    const unit = inMatch[2].toLowerCase();
+    const ms = unit.startsWith('hour') || unit.startsWith('hr') ? 3600000 : 60000;
+    return new Date(now.getTime() + amount * ms);
+  }
+
+  if (lower.includes('today')) {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+  }
+
+  return null;
 }
 
 export type Orchestrator = ReturnType<typeof createOrchestrator>;

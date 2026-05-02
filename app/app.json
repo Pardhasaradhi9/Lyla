@@ -33,6 +33,31 @@
         {
           "withSQLiteVecExtension": true
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Lyla uses Face ID to keep your conversations private."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Lyla needs calendar access to check your schedule and create events."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Lyla needs contacts access to look up phone numbers and emails for you."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#7C3AED"
+        }
       ]
     ]
   }

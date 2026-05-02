@@ -24,6 +24,10 @@ export interface SystemState {
     name: string;
     isDevice: boolean;
   };
+  calendar: {
+    todayEvents: string;
+    upcomingEvents: string;
+  };
   memories: {
     relevant: Array<{ fact: string; category: string | null; entity: string | null }>;
     totalCount: number;
@@ -61,11 +65,20 @@ export async function buildSystemState(relevantMemories: SystemState['memories']
     isDevice: Device.isDevice,
   };
 
+  let calendarState = { todayEvents: '', upcomingEvents: '' };
+  try {
+    const { getTodayEvents, getUpcomingEvents } = await import('@/tools/calendar-tool');
+    const today = await getTodayEvents();
+    const upcoming = await getUpcomingEvents(3);
+    calendarState = { todayEvents: today, upcomingEvents: upcoming };
+  } catch {}
+
   return {
     time: { now, timezone, locale },
     battery,
     network,
     device,
+    calendar: calendarState,
     memories: { relevant: relevantMemories, totalCount: totalMemoryCount },
   };
 }
@@ -83,6 +96,13 @@ export function formatSystemStateForPrompt(state: SystemState): string {
 
   parts.push(`Network: ${state.network.online ? `online (${state.network.type})` : 'offline'}`);
   parts.push(`Device: ${state.device.model}, ${state.device.os}`);
+
+  if (state.calendar.todayEvents && !state.calendar.todayEvents.includes('no events')) {
+    parts.push(state.calendar.todayEvents);
+  }
+  if (state.calendar.upcomingEvents) {
+    parts.push(state.calendar.upcomingEvents);
+  }
 
   if (state.memories.relevant.length > 0) {
     parts.push(`Relevant memories:\n${state.memories.relevant.map(m => `- ${m.fact}`).join('\n')}`);
