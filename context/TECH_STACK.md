@@ -26,13 +26,13 @@
 | **LFM2.5-1.2B-Instruct** (Huihui Abliterated, Q6_K) | Primary Brain | GGUF | 918 MB | 8192 | [HuggingFace](https://huggingface.co/mradermacher/Huihui-LFM2.5-1.2B-Instruct-abliterated-GGUF) |
 | **LFM2.5-350M** (Q4_K_M) | Router — intent classification, tool selection | GGUF | 229 MB | 2048 | [HuggingFace](https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF) |
 | **Snowflake Arctic Embed S** (Q8_0) | Embedding / vector search | GGUF | 35 MB | 512 | [HuggingFace](https://huggingface.co/mradermacher/snowflake-arctic-embed-s-GGUF) |
+| **Whisper Tiny EN** | Speech-to-Text | GGML | 75 MB | - | [HuggingFace](https://huggingface.co/ggerganov/whisper.cpp) |
 
 ### Planned Models (Not Yet Active)
 
 | Model | Role | Format | Size | Source |
 |:---|:---|:---|:---|:---|
 | **LFM2-350M-Extract** (Q4_K_M) | Fact extraction — structured JSON from conversations | GGUF | 229 MB | [HuggingFace](https://huggingface.co/LiquidAI/LFM2-350M-Extract-GGUF) |
-| **Whisper Tiny EN** | Speech-to-Text | GGML | 75 MB | [HuggingFace](https://huggingface.co/ggerganov/whisper.cpp) |
 | **LFM2.5-1.2B-Instruct** (Q4_K_M) | Brain for 4GB devices | GGUF | ~600 MB | Same source, different quant |
 
 ## AI / ML Libraries
@@ -43,7 +43,8 @@
 | Router / Classifier | `llama.rn` (same) | same | 350M model for intent classification |
 | Embeddings | `llama.rn` (same) | same | Arctic Embed GGUF model |
 | Math Engine | `mathjs` | 15.2.0 | Arithmetic, trig, unit conversions, percentages |
-| Speech-to-Text | `whisper.rn` | TBD (not installed) | Local Whisper inference |
+| Speech-to-Text | `whisper.rn` | 0.5.5 | Local Whisper inference |
+| Audio Recording | `expo-av` | 15.0.2 | Native microphone access |
 | Text-to-Speech | `expo-speech` | ~14.0.8 | OS native TTS (AVSpeechSynthesizer / TextToSpeech) |
 
 ## Database & Storage

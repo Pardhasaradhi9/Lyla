@@ -114,23 +114,28 @@ Lyla is a **fully functional on-device AI system intelligence** running on physi
 
 ---
 
+## Phase 2e: Voice Pipeline (COMPLETE)
+- [x] Install whisper.rn and expo-av
+- [x] Download ggml-tiny.en.bin (75 MB)
+- [x] Implement push-to-talk UI (hold mic button → record → transcribe → send)
+- [x] Wire STT → orchestrator → TTS loop
+- [x] Show animated pulsing waveform during recording
+- **Commit:** `0f3df3d`
+
+## Phase 3: UI Overhaul & Polish (COMPLETE)
+- [x] Rearchitect theme from "Dark/Neon AI" to "Warm Minimalist"
+- [x] Use soft oatmeal backgrounds, charcoal text, terracotta accents
+- [x] Update App configuration to force light mode and off-white splash
+- [x] Refine status bar and icons for maximum legibility
+- **Commit:** `0f3df3d`
+
+---
+
 ## What's Next
 
-### Phase 2e: Voice Pipeline (NOT STARTED)
-- [ ] Install whisper.rn
-- [ ] Download ggml-tiny.en.bin (75 MB)
-- [ ] Implement push-to-talk UI (hold mic button → record → transcribe → send)
-- [ ] Wire STT → orchestrator → TTS loop
-- [ ] Show animated waveform during recording
-- [ ] Setting: toggle auto-speak responses
-
-### Phase 3: Extractor Model Integration (NOT STARTED)
+### Phase 4: Quality, Extraction & Performance (NOT STARTED)
 - [ ] Download LFM2-350M-Extract Q4_K_M (229 MB)
 - [ ] Wire `extractFacts()` into auto-memory pipeline
-- [ ] Test extraction quality vs regex patterns
-- [ ] Model swapping: Router ↔ Extractor (same RAM slot)
-
-### Phase 4: Quality & Polish (NOT STARTED)
 - [ ] Train FastText classifier on labeled data (replace Router for classification)
 - [ ] Adaptive context management (summarize old messages)
 - [ ] Proactive suggestions based on memory patterns
@@ -140,10 +145,10 @@ Lyla is a **fully functional on-device AI system intelligence** running on physi
 
 ## Git Status
 
-- **Last commit:** `64a5fc0` "fix: resolve 7 bugs found during testing"
+- **Last commit:** `0f3df3d` "feat(phase2): Complete Orchestrator hardening, STT integration, and Warm Minimalist UI"
 - **Branch:** main
 - **Remote:** https://github.com/Pardhasaradhi9/Lyla.git (pushed)
-- **Total commits:** 13
+- **Total commits:** 14
 
 ---
 
@@ -151,6 +156,7 @@ Lyla is a **fully functional on-device AI system intelligence** running on physi
 
 | Commit | Description | Date |
 |---|---|---|
+| `0f3df3d` | feat(phase2): Complete Orchestrator hardening, STT integration, and Warm Minimalist UI | 2026-05-03 |
 | `64a5fc0` | fix: resolve 7 bugs found during testing | 2026-05-03 |
 | `e2847c7` | feat: Phase 2g — Home dashboard, math handler, knowledge always through Brain | 2026-05-03 |
 | `1b586c3` | fix: Router context overflow — n_ctx 1024→2048 | 2026-05-03 |
