@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, Platform, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Pressable, TextInput, KeyboardAvoidingView, Platform, FlatList, ActivityIndicator, Animated } from 'react-native';
+import { Audio } from 'expo-av';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -20,6 +21,7 @@ import { createOrchestrator, type Orchestrator } from '@/orchestrator';
 import { chatRepository } from '@/db/chat-repository';
 import { hapticLight, hapticSuccess, hapticError, hapticSelection } from '@/utils/haptics';
 import { speak, stopSpeaking } from '@/engines/tts';
+import { sttEngine } from '@/engines/stt';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -38,6 +40,8 @@ export default function HomeScreen() {
   const setModelDownloadProgress = useAppStore((s) => s.setModelDownloadProgress);
   const downloadingPhase = useAppStore((s) => s.downloadingPhase);
   const setDownloadingPhase = useAppStore((s) => s.setDownloadingPhase);
+  const whisperStatus = useAppStore((s) => s.whisperStatus);
+  const setWhisperStatus = useAppStore((s) => s.setWhisperStatus);
 
   // Chat State
   const { messages, addMessage, updateLastMessage, isGenerating, setIsGenerating, conversationId, setConversationId, loadConversation } = useChatStore();
@@ -54,6 +58,12 @@ export default function HomeScreen() {
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
   const orchestratorRef = useRef<Orchestrator | null>(null);
+
+  // Voice Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Create orchestrator (connects to LLM engine + Router + Knowledge)
   useEffect(() => {
@@ -131,6 +141,33 @@ export default function HomeScreen() {
           }).catch(e => console.warn('[Chat] Failed to download embedding model:', e));
         }
 
+        // 4. Init Whisper STT Engine (Background)
+        const whisperFileName = MODELS.WHISPER.fileName;
+        if (await modelExists(whisperFileName)) {
+          console.log('[Chat] Loading Whisper model...');
+          setWhisperStatus('loading');
+          const whisperPath = await getModelPath(whisperFileName);
+          await sttEngine.init(whisperPath);
+          setWhisperStatus('ready');
+        } else {
+          console.log('[Chat] Whisper model not found. Downloading in background...');
+          setWhisperStatus('downloading');
+          downloadModel(
+            MODELS.WHISPER.url,
+            MODELS.WHISPER.fileName,
+            () => {}
+          ).then(async uri => {
+            console.log('[Chat] Whisper model downloaded, initializing...');
+            setWhisperStatus('loading');
+            await sttEngine.init(uri);
+            setWhisperStatus('ready');
+          }).catch(e => {
+            console.warn('[Chat] Failed to download whisper model:', e);
+            setWhisperStatus('error');
+          });
+        }
+
+
       } catch (e) {
         console.error('Initialization error:', e);
         setModelStatus('error');
@@ -143,7 +180,15 @@ export default function HomeScreen() {
   }, []);
 
   const handleDownloadAll = async () => {
-    const steps: Array<{ key: string; label: string; config: { url: string; fileName: string }; phase: 'router' | 'brain'; init: (uri: string) => Promise<void>; setStatus: (s: ModelStatus) => void }> = [];
+    // Explicit type to handle the complex type definition without an alias
+    const steps: Array<{
+      key: string;
+      label: string;
+      config: { url: string; fileName: string };
+      phase: 'router' | 'brain' | 'embedding' | 'whisper';
+      init: (uri: string) => Promise<void>;
+      setStatus: (s: ModelStatus) => void;
+    }> = [];
 
     if (routerStatus === 'not_downloaded') {
       steps.push({
@@ -217,6 +262,38 @@ export default function HomeScreen() {
       }
     }
 
+    const whisperFileName = MODELS.WHISPER.fileName;
+    if (!(await modelExists(whisperFileName))) {
+      console.log('[Download] Starting: Whisper (75 MB)');
+      setDownloadingPhase('whisper');
+      setWhisperStatus('downloading');
+      try {
+        const uri = await downloadModel(
+          MODELS.WHISPER.url,
+          MODELS.WHISPER.fileName,
+          (progress) => setModelDownloadProgress(progress),
+        );
+        setWhisperStatus('loading');
+        await sttEngine.init(uri);
+        setWhisperStatus('ready');
+        console.log('[Download] Loaded into memory: Whisper');
+      } catch (e) {
+        console.warn('[Download] Whisper failed (non-critical):', e);
+        setWhisperStatus('error');
+      }
+    } else if (!sttEngine.isLoaded) {
+      try {
+        setWhisperStatus('loading');
+        const whisperPath = await getModelPath(whisperFileName);
+        await sttEngine.init(whisperPath);
+        setWhisperStatus('ready');
+        console.log('[Download] Loaded into memory: Whisper (cached)');
+      } catch (e) {
+        console.warn('[Download] Whisper init failed (non-critical):', e);
+        setWhisperStatus('error');
+      }
+    }
+
     if (routerEngine.isLoaded && llmEngine.isLoaded) {
       console.log('[Download] All models ready ✓');
     } else if (llmEngine.isLoaded) {
@@ -231,8 +308,86 @@ export default function HomeScreen() {
   };
 
   // ── Actions ─────────────────────────────────────────────────────
-  const handleSend = async () => {
-    const trimmed = inputText.trim();
+  const startRecording = async () => {
+    try {
+      if (isGenerating || isTranscribing) return;
+      maybeHaptic(() => hapticSelection());
+      
+      const perm = await Audio.requestPermissionsAsync();
+      if (perm.status !== 'granted') {
+        updateLastMessage('Microphone permission is required to use voice.', true);
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        undefined,
+        50
+      );
+
+      recordingRef.current = recording;
+      setIsRecording(true);
+
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 500, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true })
+        ])
+      ).start();
+
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      maybeHaptic(() => hapticError());
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      if (!recordingRef.current) return;
+      
+      setIsRecording(false);
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+      maybeHaptic(() => hapticLight());
+
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+
+      if (!uri) return;
+
+      setIsTranscribing(true);
+      
+      if (!sttEngine.isLoaded && whisperStatus === 'ready') {
+        const whisperPath = await getModelPath(MODELS.WHISPER.fileName);
+        await sttEngine.init(whisperPath);
+      }
+
+      if (!sttEngine.isLoaded) {
+        setIsTranscribing(false);
+        return;
+      }
+
+      const text = await sttEngine.transcribe(uri);
+      setIsTranscribing(false);
+
+      if (text && text.trim().length > 0) {
+        submitMessage(text);
+      }
+    } catch (err) {
+      console.error('Failed to stop/transcribe', err);
+      setIsTranscribing(false);
+      maybeHaptic(() => hapticError());
+    }
+  };
+
+  const submitMessage = async (textToSubmit: string) => {
+    const trimmed = textToSubmit.trim();
     if (!trimmed || isGenerating) return;
 
     const userMsgId = Date.now().toString();
@@ -244,7 +399,9 @@ export default function HomeScreen() {
     };
     
     addMessage(userMsg);
-    setInputText('');
+    if (textToSubmit === inputText) {
+      setInputText('');
+    }
     setIsGenerating(true);
     maybeHaptic(() => hapticLight());
     
@@ -337,6 +494,8 @@ export default function HomeScreen() {
       setIsGenerating(false);
     }
   };
+
+  const handleSend = () => submitMessage(inputText);
 
   // Start a new conversation
   const handleNewChat = useCallback(() => {
@@ -665,16 +824,29 @@ export default function HomeScreen() {
         {/* ── Input Bar ─────────────────────────────────────────────── */}
         <View style={styles.inputBar}>
           <View style={styles.inputFieldContainer}>
-            <TextInput
-              style={styles.inputField}
-              placeholder="Message Lyla..."
-              placeholderTextColor={colors.text.tertiary}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={1000}
-              editable={!isGenerating}
-            />
+            {isRecording || isTranscribing ? (
+              <View style={styles.recordingOverlay}>
+                <Ionicons 
+                  name={isTranscribing ? "hourglass-outline" : "mic-outline"} 
+                  size={20} 
+                  color={colors.accent.primary} 
+                />
+                <Text style={styles.recordingText}>
+                  {isTranscribing ? 'Transcribing...' : 'Recording... Release to send'}
+                </Text>
+              </View>
+            ) : (
+              <TextInput
+                style={styles.inputField}
+                placeholder="Message Lyla..."
+                placeholderTextColor={colors.text.tertiary}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={1000}
+                editable={!isGenerating && !isTranscribing}
+              />
+            )}
           </View>
           <Pressable
             style={[
@@ -687,7 +859,7 @@ export default function HomeScreen() {
               maybeHaptic(() => hapticSelection());
               setKnowledgeActive(!knowledgeActive);
             }}
-            disabled={isGenerating}
+            disabled={isGenerating || isRecording || isTranscribing}
           >
             <Ionicons
               name="globe-outline"
@@ -701,13 +873,31 @@ export default function HomeScreen() {
               }
             />
           </Pressable>
-          <Pressable
-            style={[styles.sendButton, (!inputText.trim() || isGenerating) && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || isGenerating}
-          >
-            <Ionicons name="arrow-up" size={20} color={colors.text.inverse} />
-          </Pressable>
+
+          {!inputText.trim() ? (
+            <Pressable
+              onPressIn={startRecording}
+              onPressOut={stopRecording}
+              disabled={isGenerating || isTranscribing}
+            >
+              <Animated.View style={[
+                styles.sendButton,
+                isRecording && styles.recordingButton,
+                isTranscribing && styles.sendButtonDisabled,
+                { transform: [{ scale: pulseAnim }] }
+              ]}>
+                <Ionicons name="mic" size={20} color={isRecording ? colors.background.primary : colors.text.inverse} />
+              </Animated.View>
+            </Pressable>
+          ) : (
+            <Pressable
+              style={[styles.sendButton, isGenerating && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={isGenerating}
+            >
+              <Ionicons name="arrow-up" size={20} color={colors.text.inverse} />
+            </Pressable>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -988,5 +1178,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  recordingOverlay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 12,
+    gap: spacing.sm,
+    minHeight: 44,
+  },
+  recordingText: {
+    ...typography.bodyMedium,
+    color: colors.accent.primary,
+    flex: 1,
+  },
+  recordingButton: {
+    backgroundColor: colors.status.error,
   },
 });

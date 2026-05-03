@@ -11,6 +11,11 @@ import { queryKnowledge, formatKnowledgeForBrain, type KnowledgeIntent } from '@
 import { postProcessCitations } from '@/knowledge/formatter';
 import { type ClassificationResult, type Intent } from '@/engines/router';
 import { useAppStore } from '@/stores/app-store';
+import { memoryEngine } from '@/engines/memory';
+import { SYSTEM_PROMPT } from '@/utils/system-prompt';
+import { useSettingsStore } from '@/stores/settings-store';
+import { parseToolCall, getToolPromptForBrain } from './tool-definitions';
+import { extractToolCallIfPresent } from './response-formatter';
 
 export interface OrchestratorResult {
   response: string;
@@ -78,10 +83,6 @@ export function createOrchestrator(config: OrchestratorConfig) {
       // ── 3. FACTUAL GUARD ─────────────────────────────────────────
 
       if (intent === 'factual_realtime') {
-        if (config.isModelReady()) {
-          return await handleBrain(userMessage, conversationHistory, onToken, config, t0,
-            'The user is asking about very recent or real-time information. You are an on-device AI without internet access. Be honest about this limitation, but share any relevant knowledge you have about the topic. Do not fabricate current data.');
-        }
         const online = useAppStore.getState().isOnline;
         return { response: getFactualGuardResponse(userMessage, online), handledBy: 'factual_guard', intent, wasStreamed: false };
       }
@@ -156,12 +157,26 @@ async function handleKnowledge(
 
     if (brainReady) {
       const formatted = formatKnowledgeForBrain(knowledgeResponse.results, userMessage);
+
+      // Build system prompt with relevant context for knowledge synthesis
+      let relevantMemories: Array<{ fact: string; category: string | null; entity: string | null }> = [];
+      try {
+        relevantMemories = (await memoryEngine.findSimilar(userMessage, 5)).map(m => ({
+          fact: m.fact, category: m.category, entity: m.entity,
+        }));
+      } catch {}
+      const memoryContext = relevantMemories.length > 0
+        ? '\n\nRelevant memories:\n' + relevantMemories.map(m => `- ${m.fact}`).join('\n')
+        : '';
+      const knowledgeSystemPrompt = SYSTEM_PROMPT + '\n\nCurrent time: ' + new Date().toLocaleString() + memoryContext;
+
       const brainResponse = await runBrain(
         formatted.text,
         userMessage,
         conversationHistory,
         onToken,
         config,
+        knowledgeSystemPrompt,
       );
 
       const finalResponse = postProcessCitations(brainResponse, formatted.sources);
@@ -272,38 +287,9 @@ async function handleTool(
     return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
   }
 
-  if (intent === 'calendar_create') {
-    const titleMatch = userMessage.match(/(?:meeting|event|appointment)(?:\s+(?:with|for|about))?\s+(.+?)(?:\s+(?:tomorrow|today|at|on|next)\b|$)/i);
-    const title = titleMatch?.[1]?.trim() || userMessage.replace(/^(?:add|create|schedule|put)\s+(?:a\s+)?/i, '').trim();
-    const timeStr = extractTimeFromMessage(userMessage);
-    if (!timeStr) {
-      return { response: "I'd love to create that event, but I need to know when. Try: 'Add meeting with Sarah tomorrow at 3pm'", handledBy: 'tool', intent, wasStreamed: false };
-    }
-    const result = await executeTool('calendar_create', { title, startDate: timeStr.toISOString(), durationMinutes: 60 });
-    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-  }
-
-  if (intent === 'contact_lookup') {
-    const nameMatch = userMessage.match(/(?:phone|number|email|birthday|contact|info)\s+(?:for|of|is\s+)?\s*(\w+(?:\s+\w+)?)/i)
-      || userMessage.match(/(\w+)'s\s+(?:phone|number|email|birthday|contact)/i);
-    const name = nameMatch?.[1]?.trim() || '';
-    if (!name) {
-      return { response: "Who should I look up? Tell me a name and I'll search your contacts.", handledBy: 'tool', intent, wasStreamed: false };
-    }
-    const result = await executeTool('contact_lookup', { name });
-    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
-  }
-
-  if (intent === 'reminder_create') {
-    const textMatch = userMessage.match(/remind\s+me\s+(?:to|about)\s+(.+?)(?:\s+(?:at|in|by|on)\b|$)/i)
-      || userMessage.match(/(?:set\s+(?:a\s+)?reminder|notify\s+me)\s+(?:to|about)?\s*(.+?)(?:\s+(?:at|in|by|on)\b|$)/i);
-    const text = textMatch?.[1]?.trim() || '';
-    const timeMatch = userMessage.match(/(?:at|in|by)\s+(.+?)$/i);
-    const timeStr = timeMatch?.[1]?.trim() || '';
-    if (!text) return { response: "What should I remind you about?", handledBy: 'tool', intent, wasStreamed: false };
-    if (!timeStr) return { response: "When should I remind you? Try: 'Remind me to call mom at 5pm'", handledBy: 'tool', intent, wasStreamed: false };
-    const result = await executeTool('reminder_create', { text, time: timeStr });
-    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+  // ── Brain-extracted tools — use native tool calling for argument parsing ──
+  if (intent === 'calendar_create' || intent === 'contact_lookup' || intent === 'reminder_create') {
+    return await handleBrainToolCall(intent, userMessage, conversationHistory, onToken, config, t0);
   }
 
   if (intent === 'reminder_list') {
@@ -312,6 +298,91 @@ async function handleTool(
   }
 
   return sysResponse("I'm not sure how to handle that.", intent);
+}
+
+async function handleBrainToolCall(
+  intent: Intent,
+  userMessage: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+  onToken: ((token: string) => void) | undefined,
+  config: OrchestratorConfig,
+  t0: number,
+): Promise<OrchestratorResult> {
+  const brainReady = await ensureBrainLoaded(config);
+  if (!brainReady) {
+    return sysResponse("I need a moment to load up — try again shortly!", intent);
+  }
+
+  // Build system prompt WITH tool schemas
+  const toolPrompt = getToolPromptForBrain();
+  const systemPrompt = SYSTEM_PROMPT + '\n' + toolPrompt;
+
+  // Ask Brain to generate a tool call
+  const messages: Array<{ role: string; content: string }> = [
+    { role: 'system', content: systemPrompt },
+  ];
+  // Include recent conversation for context
+  for (const msg of conversationHistory.slice(-6)) {
+    messages.push(msg);
+  }
+  messages.push({ role: 'user', content: userMessage });
+
+  let rawOutput = '';
+  try {
+    rawOutput = await config.streamCompletion(messages, () => {}, systemPrompt);
+  } catch (e) {
+    console.error('[Orchestrator] Brain tool call generation failed:', e);
+    return sysResponse("Something went wrong processing that. Could you try again?", intent);
+  }
+
+  // Check if Brain generated a tool call
+  const { hasToolCall, toolCall, textResponse } = extractToolCallIfPresent(rawOutput);
+
+  if (hasToolCall && toolCall) {
+    console.log(`[Orchestrator] Brain tool call: ${toolCall.name}(${JSON.stringify(toolCall.arguments)})`);
+    const result = await executeTool(toolCall.name, toolCall.arguments);
+
+    if (result.success) {
+      // Let Brain generate a natural confirmation
+      const confirmMessages: Array<{ role: string; content: string }> = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...conversationHistory.slice(-4),
+        { role: 'user', content: userMessage },
+        { role: 'system', content: `Tool "${toolCall.name}" executed successfully. Result: ${result.data}\n\nConfirm this to the user in a friendly, natural way. Be brief.` },
+      ];
+
+      // Actually, simpler approach — just have Brain confirm with the tool result context:
+      let confirmText = '';
+      try {
+        confirmText = await config.streamCompletion(
+          confirmMessages,
+          (token) => { if (onToken) onToken(formatStreamingToken(token)); },
+          SYSTEM_PROMPT,
+        );
+      } catch {
+        confirmText = result.data; // Fallback to raw tool result
+      }
+
+      await ensureRouterLoaded(config);
+      const t5 = Date.now();
+      console.log(`[Orchestrator] Brain tool call total: ${t5 - t0}ms`);
+      return { response: formatModelResponse(confirmText).response, handledBy: 'tool', intent, wasStreamed: true };
+    }
+
+    // Tool execution failed
+    await ensureRouterLoaded(config);
+    return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
+  }
+
+  // Brain didn't generate a tool call — use its text response as fallback
+  if (textResponse) {
+    await ensureRouterLoaded(config);
+    return { response: formatModelResponse(textResponse).response, handledBy: 'model', intent, wasStreamed: false };
+  }
+
+  // Complete fallback
+  await ensureRouterLoaded(config);
+  return sysResponse("I couldn't process that request. Could you rephrase it?", intent);
 }
 
 async function handleBrain(
@@ -331,12 +402,10 @@ async function handleBrain(
   let totalMemoryCount = 0;
 
   try {
-    const { memoryEngine } = await import('@/engines/memory');
     relevantMemories = (await memoryEngine.findSimilar(userMessage)).map(m => ({
       fact: m.fact, category: m.category, entity: m.entity,
     }));
-    const allMems = await memoryEngine.getAllMemories();
-    totalMemoryCount = allMems.length;
+    totalMemoryCount = await memoryEngine.getMemoryCount();
   } catch (e) {
     console.warn('[Orchestrator] Memory search skipped:', e);
   }
@@ -344,7 +413,6 @@ async function handleBrain(
   const systemState = await buildSystemState(relevantMemories, totalMemoryCount);
   const stateString = formatSystemStateForPrompt(systemState);
 
-  const { SYSTEM_PROMPT } = await import('@/utils/system-prompt');
   let systemPrompt = SYSTEM_PROMPT + '\n\n[SYSTEM STATE]\n' + stateString + '\n[/SYSTEM STATE]';
   if (overrideSystemNote) {
     systemPrompt += '\n\n[NOTE]\n' + overrideSystemNote + '\n[/NOTE]';
@@ -410,82 +478,40 @@ async function runBrain(
 type FactExtractorFn = (userMsg: string, assistantMsg: string) => Promise<Array<{ fact: string; category: string; entity: string | null }>>;
 
 function autoExtractFacts(userMessage: string, assistantResponse: string, llmExtractor?: FactExtractorFn): void {
-  if (!useSettingsStore_readOnly().memoryEnabled) return;
+  if (!useSettingsStore.getState().memoryEnabled) return;
+  if (userMessage.length < 10) return;
+  if (/^(hi|hello|hey|thanks|ok|sure|yes|no|bye|lol|haha|cool|nice|great|wow)\b/i.test(userMessage.trim())) return;
 
   try {
     const facts = extractFacts(userMessage);
-    if (facts.length === 0 && llmExtractor) {
-      llmExtractor(userMessage, assistantResponse)
-        .then((llmFacts) => {
-          if (llmFacts.length === 0) return;
-          import('@/engines/memory').then(({ memoryEngine }) => {
-            for (const fact of llmFacts.slice(0, 3)) {
-              memoryEngine.addMemory(fact.fact, fact.entity ?? undefined, fact.category).catch(() => {});
-            }
-          }).catch(() => {});
-        })
-        .catch(() => {});
+    if (facts.length > 0) {
+      for (const fact of facts.slice(0, 3)) {
+        // Dedup check — skip if a very similar memory already exists
+        memoryEngine.findSimilar(fact.fact, 1).then(existing => {
+          if (existing.length === 0 || existing[0].distance > 0.5) {
+            memoryEngine.addMemory(fact.fact, fact.entity || undefined, fact.category).catch(() => {});
+          } else {
+            console.log(`[AutoExtract] Skipped duplicate: "${fact.fact}" (distance=${existing[0].distance.toFixed(2)})`);
+          }
+        }).catch(() => {
+          // If dedup check fails, save anyway
+          memoryEngine.addMemory(fact.fact, fact.entity || undefined, fact.category).catch(() => {});
+        });
+      }
       return;
     }
-    if (facts.length === 0) return;
-
-    import('@/engines/memory').then(({ memoryEngine }) => {
-      for (const fact of facts.slice(0, 3)) {
-        memoryEngine.addMemory(fact.fact, fact.entity || undefined, fact.category).catch(() => {});
-      }
-    }).catch(() => {});
+    if (llmExtractor) {
+      llmExtractor(userMessage, assistantResponse)
+        .then((llmFacts) => {
+          for (const fact of llmFacts.slice(0, 3)) {
+            memoryEngine.addMemory(fact.fact, fact.entity ?? undefined, fact.category).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
   } catch {}
 }
 
-function useSettingsStore_readOnly() {
-  const { useSettingsStore } = require('@/stores/settings-store');
-  return useSettingsStore.getState();
-}
 
-function extractTimeFromMessage(message: string): Date | null {
-  const now = new Date();
-  const lower = message.toLowerCase();
-
-  if (lower.includes('tomorrow')) {
-    const timeMatch = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    if (timeMatch) {
-      let h = parseInt(timeMatch[1], 10);
-      const m = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-      if (timeMatch[3]?.toLowerCase() === 'pm' && h < 12) h += 12;
-      if (timeMatch[3]?.toLowerCase() === 'am' && h === 12) h = 0;
-      tomorrow.setHours(h, m, 0);
-    } else {
-      tomorrow.setHours(9, 0, 0);
-    }
-    return tomorrow;
-  }
-
-  const todayMatch = lower.match(/(?:today\s+)?(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
-  if (todayMatch) {
-    let h = parseInt(todayMatch[1], 10);
-    const m = todayMatch[2] ? parseInt(todayMatch[2], 10) : 0;
-    if (todayMatch[3]?.toLowerCase() === 'pm' && h < 12) h += 12;
-    if (todayMatch[3]?.toLowerCase() === 'am' && h === 12) h = 0;
-    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
-    if (target <= now) target.setDate(target.getDate() + 1);
-    return target;
-  }
-
-  const inMatch = lower.match(/in\s+(\d+)\s*(min|minute|hour|hr)/i);
-  if (inMatch) {
-    const amount = parseInt(inMatch[1], 10);
-    const unit = inMatch[2].toLowerCase();
-    const ms = unit.startsWith('hour') || unit.startsWith('hr') ? 3600000 : 60000;
-    return new Date(now.getTime() + amount * ms);
-  }
-
-  if (lower.includes('today')) {
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
-  }
-
-  return null;
-}
 
 export type Orchestrator = ReturnType<typeof createOrchestrator>;

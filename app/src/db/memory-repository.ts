@@ -128,6 +128,15 @@ class MemoryRepository {
     return db.getAllAsync<MemoryRow>(`SELECT * FROM memories ORDER BY created_at DESC`);
   }
 
+  /**
+   * Get total memory count without loading all rows.
+   */
+  async getMemoryCount(): Promise<number> {
+    const db = this.db;
+    const row = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM memories');
+    return row?.count ?? 0;
+  }
+
   async deleteAllMemories(): Promise<void> {
     const db = this.db;
     await db.withTransactionAsync(async () => {

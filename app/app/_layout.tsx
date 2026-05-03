@@ -36,7 +36,13 @@ export default function RootLayout() {
 
   useEffect(() => {
     initDatabase()
-      .then(() => console.log('[App] Database ready'))
+      .then(() => {
+        console.log('[App] Database ready');
+        // Evict expired knowledge cache entries on app start
+        import('@/knowledge/cache').then(({ evictExpired }) => {
+          if (evictExpired) evictExpired();
+        }).catch(() => {});
+      })
       .catch((e) => console.error('[App] Database init failed:', e));
 
     isOnline().then(setIsOnline);
@@ -75,7 +81,7 @@ export default function RootLayout() {
   if (isLocked && biometricLockEnabled) {
     return (
       <View style={lockStyles.container}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <Text style={lockStyles.title}>Lyla</Text>
         {isAuthenticating ? (
           <ActivityIndicator color={colors.accent.primary} size="large" />
@@ -96,7 +102,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,

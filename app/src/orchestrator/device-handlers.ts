@@ -1,6 +1,7 @@
 import { getCalendars, getLocales } from 'expo-localization';
 import * as Battery from 'expo-battery';
 import * as Device from 'expo-device';
+import { getDeviceTimezone, getDeviceLocale } from './system-state';
 
 const CITY_TO_TIMEZONE: Record<string, string> = {
   'london': 'Europe/London',
@@ -105,23 +106,6 @@ function extractTimezoneFromMessage(message: string): string | null {
   return null;
 }
 
-function getDeviceTimezone(): string {
-  try {
-    const calendars = getCalendars();
-    if (calendars.length > 0 && calendars[0].timeZone) {
-      return calendars[0].timeZone;
-    }
-  } catch {}
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
-function getDeviceLocale(): string {
-  try {
-    const locales = getLocales();
-    if (locales.length > 0) return locales[0].languageTag;
-  } catch {}
-  return 'en-US';
-}
 
 export function handleTimeQuery(message: string): string {
   const now = new Date();

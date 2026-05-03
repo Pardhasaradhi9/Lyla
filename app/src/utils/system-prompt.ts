@@ -35,20 +35,3 @@ FACTS
 • Share what you know confidently; flag speculation vs knowledge
 • No live data — say so for current events, prices, or news
 • "I" and "my" always refer to the user, never to you`;
-
-export function buildContextualPrompt(
-  memories: string[],
-  isOnline: boolean,
-): string {
-  let prompt = SYSTEM_PROMPT;
-
-  if (memories.length > 0) {
-    prompt += `\n\n[MEMORY]\n${memories.map(m => `• ${m}`).join('\n')}\n[/MEMORY]`;
-  }
-
-  if (!isOnline) {
-    prompt += `\n\nYou are currently offline — no internet access.`;
-  }
-
-  return prompt;
-}

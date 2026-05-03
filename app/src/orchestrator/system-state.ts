@@ -3,6 +3,10 @@ import * as Battery from 'expo-battery';
 import * as Device from 'expo-device';
 import NetInfo from '@react-native-community/netinfo';
 
+// Calendar cache — avoids expensive calendar API calls on every Brain message
+let _calCache: { data: { todayEvents: string; upcomingEvents: string }; ts: number } | null = null;
+const CAL_CACHE_TTL = 60_000; // 60 seconds
+
 export interface SystemState {
   time: {
     now: Date;
@@ -66,12 +70,17 @@ export async function buildSystemState(relevantMemories: SystemState['memories']
   };
 
   let calendarState = { todayEvents: '', upcomingEvents: '' };
-  try {
-    const { getTodayEvents, getUpcomingEvents } = await import('@/tools/calendar-tool');
-    const today = await getTodayEvents();
-    const upcoming = await getUpcomingEvents(3);
-    calendarState = { todayEvents: today, upcomingEvents: upcoming };
-  } catch {}
+  const nowMs = Date.now();
+  if (_calCache && (nowMs - _calCache.ts) < CAL_CACHE_TTL) {
+    calendarState = _calCache.data;
+  } else {
+    try {
+      const { getTodayEvents, getUpcomingEvents } = await import('@/tools/calendar-tool');
+      const data = { todayEvents: await getTodayEvents(), upcomingEvents: await getUpcomingEvents(3) };
+      _calCache = { data, ts: nowMs };
+      calendarState = data;
+    } catch {}
+  }
 
   return {
     time: { now, timezone, locale },
@@ -111,7 +120,7 @@ export function formatSystemStateForPrompt(state: SystemState): string {
   return parts.join('\n');
 }
 
-function getDeviceTimezone(): string {
+export function getDeviceTimezone(): string {
   try {
     const calendars = getCalendars();
     if (calendars.length > 0 && calendars[0].timeZone) return calendars[0].timeZone;
@@ -119,7 +128,7 @@ function getDeviceTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-function getDeviceLocale(): string {
+export function getDeviceLocale(): string {
   try {
     const locales = getLocales();
     if (locales.length > 0) return locales[0].languageTag;

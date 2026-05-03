@@ -77,8 +77,8 @@ export const EMBEDDING_CONFIG = {
 
 /** Memory engine thresholds */
 export const MEMORY = {
-  /** Cosine similarity threshold for duplicate detection */
-  SIMILARITY_THRESHOLD: 0.85,
+  /** L2 distance threshold for memory search — lower = more similar. sqlite-vec uses L2. */
+  DISTANCE_THRESHOLD: 1.2,
   /** Max memories to inject into system prompt */
   MAX_CONTEXT_MEMORIES: 10,
   /** Embedding dimension for snowflake-arctic-embed:33m */

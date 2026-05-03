@@ -5,13 +5,13 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "lyla",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0D0B1A"
+      "backgroundColor": "#FDFBF7"
     },
     "ios": {
       "supportsTablet": false,
@@ -20,7 +20,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0D0B1A"
+        "backgroundColor": "#FDFBF7"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.lyla.assistant"
@@ -56,7 +56,13 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#7C3AED"
+          "color": "#C76A58"
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Lyla needs microphone access so you can talk to her."
         }
       ]
     ]

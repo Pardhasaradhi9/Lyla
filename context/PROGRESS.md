@@ -1,22 +1,31 @@
 # Progress Tracker — Lyla
 
-> **STATUS: Phase 1 Complete — Phase 2 Starting**
-> Last Updated: 2026-05-02
+> **STATUS: Phase 1 + Phase 2a-g Complete — Phase 2e (Voice) Next**
+> Last Updated: 2026-05-03
 
 ---
 
 ## Current State
 
-Lyla is a **working on-device AI assistant** running on physical iPhone hardware. It has:
-- Streaming LLM chat with the 1.2B model
-- Deterministic intent routing (9 intents)
-- Native device APIs (time, battery, device info)
-- Vector memory (semantic save/search)
-- Chat persistence (SQLite)
-- Custom app icon
-- Dark theme UI
+Lyla is a **fully functional on-device AI system intelligence** running on physical iPhone hardware. It has:
+- **Streaming LLM chat** with the 1.2B Brain model (Q6_K, 918 MB)
+- **350M Router model** for intent classification (27 intents, ~30 few-shot examples)
+- **Model swapping** — Router ↔ Brain on RAM-constrained devices
+- **6 direct handlers** — time, battery, device, identity, limitations, math (zero LLM)
+- **10 tool handlers** — calendar, contacts, reminders, memory, clipboard, TTS
+- **Knowledge Hub** with 9 free APIs + SQLite cache + Brain synthesis
+- **Vector memory** — auto-extraction (regex), semantic search, long-press save
+- **Math engine** — mathjs with currency code detection guard
+- **Biometric lock** — FaceID/TouchID gate on app open
+- **Home dashboard** — greeting, feature cards, recent conversations
+- **Settings** — dual model display, knowledge info, performance table, legal disclaimer
+- **Haptic feedback** — on message send, memory save, tool execution
+- **TTS** — expo-speech with always-visible speaker icon
+- **Chat persistence** — SQLite with conversations + messages
+- **Custom app icon** — all sizes generated from 1024x1024 master
+- **Dark theme UI** — OLED palette, markdown rendering
 
-**What it lacks**: Multi-model routing, tool calling, auto-memory extraction, calendar/contacts integration, voice, web search. It currently works as a smart chatbot — it needs to become a system intelligence.
+**What it lacks**: Voice input (STT), 350M Extractor model for structured fact extraction, vision intelligence, proactive intelligence, file understanding.
 
 ---
 
@@ -24,114 +33,137 @@ Lyla is a **working on-device AI assistant** running on physical iPhone hardware
 
 - [x] Expo project initialized (SDK 54, New Architecture)
 - [x] All core dependencies installed
-- [x] Folder structure created (engines/, db/, stores/, orchestrator/, theme/, utils/)
+- [x] Folder structure created (engines/, db/, stores/, orchestrator/, theme/, utils/, tools/, knowledge/)
 - [x] OLED dark theme (colors, typography, spacing)
 - [x] Zustand stores (app-store, chat-store, settings-store)
-- [x] Expo Router configured (chat, settings, history)
+- [x] Expo Router configured (home, chat, settings, history)
 - [x] Engine stubs with interfaces
 - [x] Database schema (conversations, messages, memories, memory_vectors)
 - [x] Model manager (download, cache via expo-file-system)
+- [x] Streaming LLM chat with 1.2B model
+- [x] Chat persistence (SQLite)
+- [x] Custom app icon
+- [x] Dark theme UI with markdown rendering
+- **Commit:** `7f8f7a1`, `d704d5f`
 
-## Phase 2.5: Orchestration Layer (COMPLETE)
+## Phase 2a: Bug Fixes + Orchestrator Rearchitecture (COMPLETE)
 
-- [x] Intent classifier (pattern-based, 9 intents)
-- [x] Identity handler (hardcoded zero-hallucination responses)
-- [x] Factual guard (intercepts real-time questions)
-- [x] Response formatter (strips tokens, extracts thinking traces)
-- [x] Main orchestrator (ties intent → handler → LLM pipeline)
-- [x] System prompt (shortened for 1.2B instruction-following)
+- [x] Fix BUG-004: Start fresh on app open (no auto-load last conversation)
+- [x] Fix BUG-005: Context overflow protection (MAX_CONTEXT_CHARS 12000 → 6000)
+- [x] Fix BUG-006: Semantic memory query (getAllMemories → findSimilar)
+- [x] Fix BUG-007: Fact extraction (regex-based, 12 patterns)
+- [x] Fix BUG-008: Lower MAX_CONTEXT_CHARS
+- [x] Rearchitect orchestrator with 6-stage pipeline
+- [x] Create system state object
+- [x] Create tool registry with schemas
+- [x] Create router guardrails (validateClassification, intent type guards)
+- **Commit:** `9b3cc36`
 
-## Phase 3: Memory Engine (COMPLETE)
+## Phase 2b: Native Package Install (COMPLETE)
 
-- [x] SQLite database initialization (expo-sqlite)
-- [x] sqlite-vec extension loaded via bundled extensions
-- [x] Chat Repository (CRUD for conversations + messages)
-- [x] Memory Repository (CRUD + vector search)
-- [x] Embedding engine (Arctic Embed via llama.rn)
-- [x] Memory engine (coordinates embedding + repository)
-- [x] Orchestrator auto-injects retrieved memories into LLM context
-- [x] Long-press to save memory
-- [x] "Clear All Memories" in settings
+- [x] Install: expo-local-authentication, expo-calendar, expo-contacts, expo-secure-store, expo-notifications, expo-task-manager, expo-background-fetch, expo-crypto
+- [x] Configure app.json plugins (biometric, calendar, contacts, notifications, sqlite-vec)
+- [x] Rebuild iOS
+- [x] Implement biometric lock (FaceID/TouchID)
+- [x] Implement calendar tool (read/write via expo-calendar)
+- [x] Implement contacts tool (lookup via expo-contacts)
+- [x] Implement reminders tool (local notifications via expo-notifications)
+- [x] Add 5 new intents: calendar_query, calendar_create, contact_lookup, reminder_create, reminder_list
+- **Commit:** `0014364`
 
-## Phase 3.5: Native Device Tools (COMPLETE)
+## Phase 2c: JS-Only Features (COMPLETE)
 
-- [x] Device handlers: timezone-aware time, battery, device info
-- [x] 4 new intents: identity_query, limitations_query, battery_query, device_query
-- [x] Updated identity handler with accurate responses
-- [x] 200-char limit on long-press memory saves
-- [x] Custom iOS app icon (all sizes generated from 1024x1024 master)
-- [x] Suppressed TextInputUI warnings with LogBox.ignoreLogs
+- [x] Haptic feedback (expo-haptics) — on send, memory save, tool execution
+- [x] Clipboard tool (expo-clipboard) — read/write
+- [x] Text-to-speech (expo-speech) — speak with onDone callback
+- [x] Network-aware routing (netinfo) — factual guard respects online/offline
+- **Commit:** `369a366`
 
-## iOS Device Testing (COMPLETE)
+## Phase 2d: 350M Router Model Integration (COMPLETE)
 
-- [x] App running on physical iPhone
-- [x] Model downloading and loading successfully
-- [x] All native intents work (time, battery, device, identity, limitations)
-- [x] LLM streaming responses working
-- [x] Memory save/recall working
-- [x] Performance: superfast on real hardware (Metal GPU acceleration)
+- [x] Download and integrate LFM2.5-350M Q4_K_M (229 MB)
+- [x] Implement Router engine (router.ts, 193 lines) with ChatML formatting
+- [x] Implement model swapper (model-swapper.ts, 107 lines) with device profiles
+- [x] Wire Router into orchestrator — replaces regex classifier
+- [x] Implement triple-layer escalation guardrails
+- [x] Unified download button (Router → Brain → Embedding sequentially)
+- **Commit:** `77ddc8d`
 
-## Bugs Found During Testing (FIXED)
+## Phase 2f: Knowledge Hub (COMPLETE)
 
-- [x] **BUG-004**: App reopens with last chat instead of fresh chat
-- [x] **BUG-005**: Context overflow crash after long conversations
-- [x] **BUG-006**: Memory query dumps raw messages instead of semantic results
-- [x] **BUG-007**: Memory saves raw text, not structured facts
-- [x] **BUG-008**: Slowdown after long conversation (context grows too large)
+- [x] Implement 9 free API wrappers (Wikipedia, Wikidata, Open-Meteo, REST Countries, Open Library, OpenAlex, Free Dictionary, ExchangeRate, Nager.Date)
+- [x] SQLite cache layer with per-source TTLs
+- [x] Knowledge formatter (formatForBrain + postProcessCitations)
+- [x] Per-message globe toggle (🌐) in chat screen
+- [x] Router rewrite: 26 intents → 27 intents (added knowledge_currency)
+- [x] Knowledge queries ALWAYS through Brain for synthesis
+- **Commit:** `01c513f`
+- **Follow-up:** Router n_ctx fix (`1b586c3`), unified download (`3af54c4`)
+
+## Phase 2g: Home Dashboard + Math + Bug Fixes (COMPLETE)
+
+- [x] Home dashboard (index.tsx) — greeting, feature cards, recent conversations, "New Chat" button
+- [x] Chat screen (chat.tsx) — back button, globe toggle, message bubbles
+- [x] Math handler (math-handler.ts) — mathjs with sanitization + natural language extraction
+- [x] Knowledge always through Brain (handleKnowledge → Brain synthesis)
+- [x] Model swap wiring (ensureBrainLoaded/ensureRouterLoaded in orchestrator)
+- [x] Settings rewrite — dual models, knowledge info, performance table, legal disclaimer
+- [x] Fix 6 bugs: quant dead code, weather geocoding, TTS onDone, markdown stripping, factual guard, activeModel state
+- [x] Fix 7 additional bugs: router disambiguation, currency detection, identity keywords, TTS speaker icon, memory error filter, knowledge logging, invalid icons
+- **Commit:** `e2847c7`, `64a5fc0`
 
 ---
 
-## What's Next: Phase 2 — System Rearchitecture
+## What's Next
 
-### Phase 2a: Bug Fixes + Orchestrator Rearch (JS-only, no rebuild) — COMPLETE
-- [x] Fix BUG-004: Start fresh on app open
-- [x] Fix BUG-005: Context overflow protection
-- [x] Fix BUG-006: Semantic memory query
-- [x] Fix BUG-007: Fact extraction (regex-based, no LLM)
-- [x] Fix BUG-008: Lower MAX_CONTEXT_CHARS
-- [x] Rearchitect orchestrator with tool loop
-- [x] Create system state object
-- [x] Create tool registry with schemas
-
-### Phase 2b: Batch Native Package Install (one rebuild)
-- [ ] Install: expo-local-authentication, expo-calendar, expo-contacts, expo-secure-store, expo-notifications, expo-task-manager, expo-background-fetch, expo-crypto
-- [ ] Run `npx expo prebuild --clean`
-- [ ] Rebuild iOS + Android
-- [ ] Test on device
-
-### Phase 2c: JS-Only Features (no rebuild)
-- [ ] Haptic feedback (expo-haptics — already installed)
-- [ ] Clipboard tool (expo-clipboard — already installed)
-- [ ] Text-to-speech (expo-speech — already installed)
-- [ ] Network-aware routing
-
-### Phase 2d: 350M Router Model Integration
-- [ ] Download and test LFM2.5-350M Q4_K_M
-- [ ] Download and test LFM2-350M-Extract Q4_K_M
-- [ ] Implement model manager with device-aware model selection
-- [ ] Implement model swapping (Router ↔ Brain)
-- [ ] Wire Router into orchestrator for fast intent classification
-- [ ] Wire Extractor into auto-memory pipeline
-
-### Phase 2e: Voice Pipeline
+### Phase 2e: Voice Pipeline (NOT STARTED)
 - [ ] Install whisper.rn
-- [ ] Download ggml-tiny.en.bin
-- [ ] Implement push-to-talk UI
+- [ ] Download ggml-tiny.en.bin (75 MB)
+- [ ] Implement push-to-talk UI (hold mic button → record → transcribe → send)
 - [ ] Wire STT → orchestrator → TTS loop
+- [ ] Show animated waveform during recording
+- [ ] Setting: toggle auto-speak responses
 
-### Phase 2f: Web Search
-- [ ] Implement DuckDuckGo HTML search
-- [ ] Parse results with cheerio
-- [ ] Inject search results into LLM context
-- [ ] Graceful offline fallback
+### Phase 3: Extractor Model Integration (NOT STARTED)
+- [ ] Download LFM2-350M-Extract Q4_K_M (229 MB)
+- [ ] Wire `extractFacts()` into auto-memory pipeline
+- [ ] Test extraction quality vs regex patterns
+- [ ] Model swapping: Router ↔ Extractor (same RAM slot)
+
+### Phase 4: Quality & Polish (NOT STARTED)
+- [ ] Train FastText classifier on labeled data (replace Router for classification)
+- [ ] Adaptive context management (summarize old messages)
+- [ ] Proactive suggestions based on memory patterns
+- [ ] Performance optimization (bundle size, cold start time)
 
 ---
 
 ## Git Status
 
-- **Last commit**: d704d5f "feat: Phase 1 complete - native device tools + bug fixes"
-- **Branch**: main
-- **Remote**: pushed
+- **Last commit:** `64a5fc0` "fix: resolve 7 bugs found during testing"
+- **Branch:** main
+- **Remote:** https://github.com/Pardhasaradhi9/Lyla.git (pushed)
+- **Total commits:** 13
+
+---
+
+## Complete Commit History
+
+| Commit | Description | Date |
+|---|---|---|
+| `64a5fc0` | fix: resolve 7 bugs found during testing | 2026-05-03 |
+| `e2847c7` | feat: Phase 2g — Home dashboard, math handler, knowledge always through Brain | 2026-05-03 |
+| `1b586c3` | fix: Router context overflow — n_ctx 1024→2048 | 2026-05-03 |
+| `3af54c4` | feat: unified model download — single button | 2026-05-03 |
+| `01c513f` | feat: Phase 2f — Knowledge Hub with 9 free APIs | 2026-05-03 |
+| `77ddc8d` | feat: Phase 2d — 350M Router model integration | 2026-05-03 |
+| `369a366` | feat: Phase 2c — haptics, clipboard tools, TTS, network routing | 2026-05-03 |
+| `0014364` | feat: Phase 2b — native packages, calendar, contacts, reminders, biometric lock | 2026-05-03 |
+| `9b3cc36` | feat: Phase 2a — bug fixes, orchestrator rearchitecture | 2026-05-03 |
+| `d704d5f` | feat: Phase 1 complete - native device tools + bug fixes | 2026-05-02 |
+| `d3d0ee3` | fix: add react-native-worklets-core for reanimated | 2026-05-02 |
+| `7f8f7a1` | feat(setup): Initialize Expo SDK 54 app | 2026-05-02 |
+| `bd59184` | chore: Initialize project with planning, research | 2026-05-02 |
 
 ---
 
@@ -141,22 +173,28 @@ Lyla is a **working on-device AI assistant** running on physical iPhone hardware
 /Users/pardhasaradhichukka/Desktop/Lyla/
 ├── context/                    # THIS FOLDER — read first
 ├── research/                   # User research documents
-│   └── new research/           # Model selection + RAM budget research
+│   ├── slt.txt                 # Speech model research
+│   ├── slt2.md                 # Model selection research
+│   └── slt3.md                 # RAM budget research
 ├── ios_icons/                  # iOS icon set (source)
 ├── App_icon.png                # Master app icon (1024x1024)
 └── app/                        # React Native project root
-    ├── app/                    # Expo Router screens
-    │   ├── _layout.tsx
-    │   ├── index.tsx           # Chat screen
-    │   ├── settings.tsx
-    │   └── history.tsx
+    ├── app/                    # Expo Router screens (5 files)
+    │   ├── _layout.tsx         # Root: biometric lock, DB init, network
+    │   ├── index.tsx           # Home dashboard
+    │   ├── chat.tsx            # Chat screen
+    │   ├── settings.tsx        # Settings modal
+    │   └── history.tsx         # Chat history
     ├── src/
-    │   ├── orchestrator/       # Message routing + device handlers
-    │   ├── engines/            # LLM, memory, embeddings, TTS
-    │   ├── db/                 # SQLite + sqlite-vec
-    │   ├── stores/             # Zustand state
-    │   ├── utils/              # Constants, prompts, model manager
-    │   └── theme/              # Colors, typography, spacing
+    │   ├── orchestrator/       # 12 modules — routing, handlers, tools
+    │   ├── engines/            # 8 modules — LLM, router, memory, embeddings, TTS
+    │   ├── knowledge/          # Hub + 9 API wrappers + cache + formatter
+    │   ├── prompts/            # 5 prompt templates
+    │   ├── db/                 # SQLite + sqlite-vec (3 modules)
+    │   ├── stores/             # Zustand (3 stores)
+    │   ├── tools/              # Native tools (4: biometric, calendar, contacts, reminder)
+    │   ├── utils/              # Constants, model manager, network, haptics (6 modules)
+    │   └── theme/              # Colors, typography, spacing (4 modules)
     ├── ios/                    # Native iOS project (prebuilt)
     ├── android/                # Native Android project (prebuilt)
     └── assets/                 # Icons, splash, favicon
@@ -172,6 +210,6 @@ Lyla is a **working on-device AI assistant** running on physical iPhone hardware
 > 3. Read TECH_STACK.md for exact versions and configurations
 > 4. Read this PROGRESS.md for current status
 > 5. Read DECISIONS.md to understand WHY things were decided
-> 6. Read IMPLEMENTATION_PLAN.md for what to build next
-> 7. Read ERRORS_AND_SOLUTIONS.md to avoid repeating mistakes
-> 8. Continue from Phase 2a
+> 6. Read ERRORS_AND_SOLUTIONS.md to avoid repeating mistakes (18 errors documented)
+> 7. Read FUTURE_PLANS.md for the roadmap
+> 8. Continue from Phase 2e (Voice Pipeline)

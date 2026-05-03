@@ -10,10 +10,11 @@ interface AppState {
   // ── Model Status ────────────────────────────────────────────────
   modelStatus: ModelStatus;
   modelDownloadProgress: number; // 0-1
-  downloadingPhase: 'idle' | 'router' | 'brain' | 'embedding' | 'loading' | 'done';
+  downloadingPhase: 'idle' | 'router' | 'brain' | 'embedding' | 'whisper' | 'loading' | 'done';
   activeModel: string | null;
   routerStatus: ModelStatus;
   brainStatus: ModelStatus;
+  whisperStatus: ModelStatus;
   isSwapping: boolean;
 
   // ── Network ─────────────────────────────────────────────────────
@@ -26,10 +27,11 @@ interface AppState {
   // ── Actions ─────────────────────────────────────────────────────
   setModelStatus: (status: ModelStatus) => void;
   setModelDownloadProgress: (progress: number) => void;
-  setDownloadingPhase: (phase: 'idle' | 'router' | 'brain' | 'embedding' | 'loading' | 'done') => void;
+  setDownloadingPhase: (phase: 'idle' | 'router' | 'brain' | 'embedding' | 'whisper' | 'loading' | 'done') => void;
   setActiveModel: (model: string | null) => void;
   setRouterStatus: (status: ModelStatus) => void;
   setBrainStatus: (status: ModelStatus) => void;
+  setWhisperStatus: (status: ModelStatus) => void;
   setIsSwapping: (swapping: boolean) => void;
   setIsOnline: (online: boolean) => void;
   setIsAppReady: (ready: boolean) => void;
@@ -44,6 +46,7 @@ export const useAppStore = create<AppState>((set) => ({
   activeModel: null,
   routerStatus: 'not_downloaded',
   brainStatus: 'not_downloaded',
+  whisperStatus: 'not_downloaded',
   isSwapping: false,
   isOnline: false,
   isAppReady: false,
@@ -56,6 +59,7 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveModel: (model) => set({ activeModel: model }),
   setRouterStatus: (status) => set({ routerStatus: status }),
   setBrainStatus: (status) => set({ brainStatus: status }),
+  setWhisperStatus: (status) => set({ whisperStatus: status }),
   setIsSwapping: (swapping) => set({ isSwapping: swapping }),
   setIsOnline: (online) => set({ isOnline: online }),
   setIsAppReady: (ready) => set({ isAppReady: ready }),

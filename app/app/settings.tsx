@@ -26,6 +26,7 @@ export default function SettingsScreen() {
   const modelStatus = useAppStore((s) => s.modelStatus);
   const routerStatus = useAppStore((s) => s.routerStatus);
   const brainStatus = useAppStore((s) => s.brainStatus);
+  const whisperStatus = useAppStore((s) => s.whisperStatus);
   const activeModel = useAppStore((s) => s.activeModel);
   const { autoPlayTTS, ttsRate, memoryEnabled, hapticsEnabled, biometricLockEnabled, knowledgeEnabled,
     setAutoPlayTTS, setMemoryEnabled, setHapticsEnabled, setBiometricLockEnabled, setKnowledgeEnabled } = useSettingsStore();
@@ -50,6 +51,7 @@ export default function SettingsScreen() {
         <SettingsSection title="AI Models">
           <ModelRow icon="flash-outline" label="Router" model={MODELS.SPEED_LLM.name} size="229 MB" status={routerStatus} active={activeModel === 'router'} />
           <ModelRow icon="hardware-chip-outline" label="Brain" model={MODELS.PRIMARY_LLM.name} size="960 MB" status={brainStatus} active={activeModel === 'brain'} />
+          <ModelRow icon="mic-outline" label="STT (Voice)" model={MODELS.WHISPER.name} size="75 MB" status={whisperStatus} active={false} />
         </SettingsSection>
 
         <SettingsSection title="Knowledge Hub">

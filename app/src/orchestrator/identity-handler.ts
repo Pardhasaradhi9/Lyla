@@ -12,7 +12,7 @@
  * - Model: LFM 2.5 (1.2B parameters, text-only)
  */
 
-import type { Intent } from './intent-classifier';
+import type { Intent } from '@/engines/router';
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -46,44 +46,48 @@ I'm text-only (no image or audio), but I'm designed to be a great conversational
 ];
 
 const CAPABILITIES_RESPONSES = [
-  `Here's what I can do right now:
+  `Here's what I can do:
 
-Chat & brainstorm — Creative writing, explaining concepts, giving advice, having a conversation.
+**Chat & Create** — Conversations, brainstorming, writing, explaining concepts.
 
-Remember things — Long-press any message to save it to my memory. I'll use it in future conversations.
+**Remember You** — I extract facts from our chats automatically. Long-press any message to save it manually.
 
-Native device access — I can check the time (any timezone), battery level, and device info without using the model at all — instant and private.
+**Device Access** — Time (any timezone), battery level, device info — instant, no model needed.
 
-Coming soon:
-- Web search for real-time info
-- Voice input and output
-- Calendar and reminders
-- Automatic fact extraction`,
+**Calendar & Contacts** — Read your schedule, create events, look up contact info.
+
+**Reminders** — Set time-based reminders that notify you even when I'm closed.
+
+**Knowledge Hub** — Weather, country facts, books, research papers, dictionary, currency conversion, holidays, Wikipedia — tap the 🌐 globe to activate.
+
+**Math Engine** — Arithmetic, percentages, trig, unit conversions — calculated locally.
+
+**Text-to-Speech** — I can read any response aloud. Tap the speaker icon.
+
+**Coming soon:** Voice input (Whisper), proactive daily briefings.`,
 ];
 
 const LIMITATIONS_RESPONSES = [
   `I believe in being upfront about what I can and can't do:
 
-What I CAN do:
+**What I CAN do:**
 - Chat, brainstorm, explain concepts, give advice
 - Help with writing, editing, and creative tasks
-- Remember things you tell me (long-press to save)
-- Check the time, battery level, and device info natively
-- Answer questions based on my training knowledge
+- Remember things you tell me (auto-extract + long-press to save)
+- Check time, battery, device info natively
+- Read your calendar, create events, look up contacts
+- Set reminders that fire even when the app is closed
+- Look up weather, countries, books, papers, definitions, currencies, holidays
+- Calculate math, percentages, unit conversions locally
+- Read responses aloud via text-to-speech
 
-What I CAN'T do (yet):
+**What I CAN'T do (yet):**
 - See or analyze images — I'm text-only
 - Generate images or art
 - Access real-time web data (web search coming soon)
-- Set reminders or calendar events (coming soon)
-- Listen to or process audio (voice input coming soon)
+- Listen to audio (voice input coming soon)
 
-I'm a 1.2B parameter model running 100% on your phone. That means total privacy — no data ever leaves your device — but I'm smaller than cloud-based assistants. If I'm not sure about something, I'll tell you rather than guessing.`,
-  `Here's what you should know about my limitations:
-
-I'm text-only — I can't see images, generate pictures, or process audio directly. I also can't browse the web yet, but that's coming soon.
-
-Being a smaller model (1.2B parameters), I'm not as powerful as cloud-based assistants, but I make up for it with complete privacy and offline access. Everything stays on your phone. I'm honest about uncertainty — if I don't know something, I'll say so rather than making it up.`,
+I'm a 1.2B parameter model running 100% on your phone. Total privacy — no data ever leaves your device — but I'm smaller than cloud assistants. If I'm not sure, I'll say so.`,
 ];
 
 const GREETING_RESPONSES = [
