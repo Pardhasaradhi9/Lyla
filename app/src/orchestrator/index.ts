@@ -71,8 +71,8 @@ export function createOrchestrator(config: OrchestratorConfig) {
       if (intent === 'time_query') return sysResponse(handleTimeQuery(userMessage), intent);
       if (intent === 'battery_query') return sysResponse(await handleBatteryQuery(), intent);
       if (intent === 'device_query') return sysResponse(handleDeviceQuery(), intent);
-      if (intent === 'identity_query') return sysResponse(getIdentityResponse(intent)!, intent);
-      if (intent === 'limitations_query') return sysResponse(getIdentityResponse('limitations')!, intent);
+      if (intent === 'identity_query') return sysResponse(getIdentityResponse(intent, userMessage)!, intent);
+      if (intent === 'limitations_query') return sysResponse(getIdentityResponse('limitations', userMessage)!, intent);
       if (intent === 'math_query') return sysResponse(handleMathQuery(userMessage), intent);
 
       // ── 3. FACTUAL GUARD ─────────────────────────────────────────
@@ -142,6 +142,7 @@ async function handleKnowledge(
     const knowledgeResponse = await queryKnowledge(intent, userMessage);
 
     if (knowledgeResponse.results.length === 0) {
+      console.warn(`[Orchestrator] Knowledge Hub returned 0 results for intent=${intent} query="${userMessage.slice(0, 80)}"`);
       const brainReady = await ensureBrainLoaded(config);
       if (brainReady) {
         const result = await handleBrain(userMessage, conversationHistory, onToken, config, t0);

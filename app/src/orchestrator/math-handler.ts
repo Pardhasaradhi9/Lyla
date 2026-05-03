@@ -48,7 +48,13 @@ function formatNumber(n: number): string {
   return formatted.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
+const CURRENCY_CODES = /\b(USD|EUR|GBP|INR|JPY|AUD|CAD|CHF|CNY|KRW|BRL|MXN|SGD|HKD|NOK|SEK|DKK|NZD|ZAR|RUB|TRY|THB|MYR|PHP|IDR|VND|AED|SAR|EGP|NGN|KES|GHS|PKR|BDT|LKR|IRR|IQD|ILS|JOD|KWD|OMR|QAR|BHD|TND|MAD|VND|CZK|PLN|HUF|RON|BGN|HRK|ISK|dollar|dollars|euro|euros|pound|pounds|rupee|rupees|yen|won|franc|francs|krona|kronor|ringgit|baht|peso|pesos|rand|ruble|lira|dirham|riyal|shekel|shilling|naira|cedi|dinar|dirhams)\b/i;
+
 export function handleMathQuery(message: string): string {
+  if (CURRENCY_CODES.test(message)) {
+    return "That looks like a currency conversion. Try asking with the globe 🌐 icon turned on — for example: \"What is 13 USD in INR?\"";
+  }
+
   const expression = extractExpression(message);
   if (!expression) {
     return "I couldn't find a math expression in your message. Try something like \"What's 15% of 2400?\" or \"sqrt(144)\".";

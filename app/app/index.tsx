@@ -17,7 +17,7 @@ const FEATURES = [
   { icon: 'globe-outline', title: 'Knowledge Hub', desc: 'Weather, books, science, currencies & more', color: colors.accent.secondary },
   { icon: 'calculator-outline', title: 'Calculator', desc: 'Math, conversions, percentages', color: '#10B981' },
   { icon: 'calendar-outline', title: 'Calendar', desc: 'Check schedule, create events', color: '#F59E0B' },
-  { icon: 'sparkles-outline', title: 'Memory', desc: 'I remember what you tell me', color: '#EC4899' },
+  { icon: 'sparkles', title: 'Memory', desc: 'I remember what you tell me', color: '#EC4899' },
   { icon: 'lock-closed-outline', title: 'Privacy', desc: '100% on-device, nothing leaves', color: colors.accent.primary },
 ];
 

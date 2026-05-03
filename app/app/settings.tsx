@@ -108,11 +108,11 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="Haptics">
-          <SettingsToggleRow icon="phone-vibrate" label="Haptic feedback" value={hapticsEnabled} onValueChange={setHapticsEnabled} />
+          <SettingsToggleRow icon="hardware-chip-outline" label="Haptic feedback" value={hapticsEnabled} onValueChange={setHapticsEnabled} />
         </SettingsSection>
 
         <SettingsSection title="Memory">
-          <SettingsToggleRow icon="sparkles-outline" label="Memory enabled" value={memoryEnabled} onValueChange={setMemoryEnabled} />
+          <SettingsToggleRow icon="sparkles" label="Memory enabled" value={memoryEnabled} onValueChange={setMemoryEnabled} />
           <SettingsRow icon="list-outline" label="Saved memories" value={`${memoryCount} fact${memoryCount !== 1 ? 's' : ''}`} />
           {memoryCount > 0 && (
             <Pressable

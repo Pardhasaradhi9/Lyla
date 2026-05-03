@@ -112,8 +112,29 @@ export function extractFacts(text: string): ExtractedFact[] {
   return facts;
 }
 
-export function extractFactOrRaw(text: string): ExtractedFact {
+const ERROR_PATTERNS = [
+  /couldn'?t find/i,
+  /no (?:math |currency )?expression/i,
+  /i (?:can'?t|cannot|am unable to)/i,
+  /sorry/i,
+  /error/i,
+  /failed to/i,
+  /unavailable/i,
+  /not (?:available|found|supported)/i,
+  /try (?:again|asking)/i,
+  /doesn'?t (?:look|seem|appear)/i,
+  /i don'?t (?:know|have|understand)/i,
+  /not sure/i,
+];
+
+export function extractFactOrRaw(text: string): ExtractedFact | null {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return null;
+  for (const pat of ERROR_PATTERNS) {
+    if (pat.test(trimmed)) return null;
+  }
+
   const facts = extractFacts(text);
   if (facts.length > 0) return facts[0];
-  return { fact: text.trim(), entity: null, category: 'general' };
+  return { fact: trimmed, entity: null, category: 'general' };
 }

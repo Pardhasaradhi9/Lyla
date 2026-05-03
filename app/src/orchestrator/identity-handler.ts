@@ -130,7 +130,17 @@ const PRAISE_RESPONSES = [
   `That's sweet of you to say! I'm always here to help.`,
 ];
 
-export function getIdentityResponse(intent: string): string | null {
+export function getIdentityResponse(intent: string, userMessage?: string): string | null {
+  if (intent === 'identity_query' && userMessage) {
+    const lower = userMessage.toLowerCase();
+    if (/\b(built|created|made|developed|who (made|built|created|developed)|creator|team behind|company behind)\b/.test(lower)) {
+      return pick(CREATOR_RESPONSES);
+    }
+    if (/\b(model|engine|lfm|parameter|under the hood|what model|what ai|what llm|which model|how do you work)\b/.test(lower)) {
+      return pick(MODEL_INFO_RESPONSES);
+    }
+  }
+
   switch (intent) {
     case 'identity_query':
       return pick(IDENTITY_RESPONSES);

@@ -437,6 +437,12 @@ export default function HomeScreen() {
         const { memoryEngine } = require('@/engines/memory');
         const { extractFactOrRaw } = require('@/orchestrator/fact-extractor');
         const extracted = extractFactOrRaw(content);
+        if (!extracted) {
+          setTooLong(true);
+          if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+          feedbackTimerRef.current = setTimeout(() => setTooLong(false), 2000);
+          return;
+        }
         await memoryEngine.addMemory(extracted.fact, extracted.entity || undefined, extracted.category);
         maybeHaptic(() => hapticSuccess());
         setMemorySaved(true);
@@ -474,11 +480,6 @@ export default function HomeScreen() {
           )}
           {showCopy && !item.isStreaming && !copied && !memorySaved && (
             <View style={styles.feedbackRow}>
-              {!isUser && (
-                <Pressable style={styles.feedbackBadge} onPress={handleSpeak} hitSlop={8}>
-                  <Ionicons name={speaking ? 'stop' : 'volume-high-outline'} size={14} color="#fff" />
-                </Pressable>
-              )}
               <Pressable style={styles.feedbackBadge} onPress={handleCopy} hitSlop={8}>
                 <Ionicons name="copy-outline" size={14} color="#fff" />
               </Pressable>
@@ -500,6 +501,11 @@ export default function HomeScreen() {
             </View>
           )}
         </Pressable>
+        {!isUser && !item.isStreaming && content && (
+          <Pressable style={styles.speakButton} onPress={handleSpeak} hitSlop={8}>
+            <Ionicons name={speaking ? 'stop-circle' : 'volume-high-outline'} size={18} color={speaking ? colors.accent.primary : colors.text.tertiary} />
+          </Pressable>
+        )}
       </View>
     );
   };
@@ -971,6 +977,12 @@ const styles = StyleSheet.create({
     right: 4,
     flexDirection: 'row',
     gap: 4,
+  },
+  speakButton: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
   },
   feedbackText: {
     color: '#fff',
