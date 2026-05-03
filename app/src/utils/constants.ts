@@ -10,12 +10,7 @@ export const MODELS = {
     sizeBytes: 963_000_000,
     url: 'https://huggingface.co/mradermacher/Huihui-LFM2.5-1.2B-Instruct-abliterated-GGUF/resolve/main/Huihui-LFM2.5-1.2B-Instruct-abliterated.Q6_K.gguf',
   },
-  SPEED_LLM: {
-    name: 'LFM2.5-350M',
-    fileName: 'LFM2.5-350M-Q4_K_M.gguf',
-    sizeBytes: 229_000_000,
-    url: 'https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF/resolve/main/LFM2.5-350M-Q4_K_M.gguf',
-  },
+
   EXTRACT_LLM: {
     name: 'LFM2-350M-Extract',
     fileName: 'LFM2-350M-Extract-Q4_K_M.gguf',

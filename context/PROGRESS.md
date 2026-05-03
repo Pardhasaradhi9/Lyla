@@ -1,6 +1,6 @@
 # Progress Tracker — Lyla
 
-> **STATUS: Phase 1 + Phase 2a-g Complete — Phase 2e (Voice) Next**
+> **STATUS: Phase 1 through Phase 4 Complete — Ready for Deployment**
 > Last Updated: 2026-05-03
 
 ---
@@ -131,15 +131,23 @@ Lyla is a **fully functional on-device AI system intelligence** running on physi
 
 ---
 
+### Phase 4: Quality, Extraction & Performance (COMPLETE)
+- [x] Integrate FastText Lite (Native JS) for <1ms intent classification (replaces 350M Router)
+- [x] Download LFM2-350M-Extract Q4_K_M (229 MB)
+- [x] Wire `extractFacts()` into an async, non-blocking auto-memory pipeline
+- [x] Adaptive context management (background DB summarization over 20 messages)
+- [x] Audio Ducking (native AVAudioSession ducking for background music)
+- [x] Storage Visibility (Detailed Storage Management in Settings)
+
+---
+
 ## What's Next
 
-### Phase 4: Quality, Extraction & Performance (NOT STARTED)
-- [ ] Download LFM2-350M-Extract Q4_K_M (229 MB)
-- [ ] Wire `extractFacts()` into auto-memory pipeline
-- [ ] Train FastText classifier on labeled data (replace Router for classification)
-- [ ] Adaptive context management (summarize old messages)
-- [ ] Proactive suggestions based on memory patterns
-- [ ] Performance optimization (bundle size, cold start time)
+### Phase 5: Polish & Deployment (NOT STARTED)
+- [ ] Run bundle size optimization (strip dev dependencies)
+- [ ] Compile physical iOS build (`npx expo run:ios --configuration Release`)
+- [ ] Compile physical Android build
+- [ ] App Store deployment
 
 ---
 

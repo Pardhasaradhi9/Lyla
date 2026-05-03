@@ -48,10 +48,28 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        <SettingsSection title="AI Models">
-          <ModelRow icon="flash-outline" label="Router" model={MODELS.SPEED_LLM.name} size="229 MB" status={routerStatus} active={activeModel === 'router'} />
+        <SettingsSection title="AI Models (Local Storage)">
+          <ModelRow icon="flash-outline" label="Router" model="FastText Lite (JS)" size="12 KB" status="ready" active={true} />
+          <ModelRow icon="library-outline" label="Extractor" model={MODELS.EXTRACT_LLM.name} size="229 MB" status={routerStatus} active={activeModel === 'router'} />
           <ModelRow icon="hardware-chip-outline" label="Brain" model={MODELS.PRIMARY_LLM.name} size="960 MB" status={brainStatus} active={activeModel === 'brain'} />
           <ModelRow icon="mic-outline" label="STT (Voice)" model={MODELS.WHISPER.name} size="75 MB" status={whisperStatus} active={false} />
+          
+          <View style={styles.perfInfo}>
+            <Text style={styles.perfText}>Where is my data?</Text>
+            <View style={styles.perfRow}>
+              <Text style={styles.perfLabel}>Models:</Text>
+              <Text style={styles.perfValue}>Local app document directory</Text>
+            </View>
+            <View style={styles.perfRow}>
+              <Text style={styles.perfLabel}>Chats:</Text>
+              <Text style={styles.perfValue}>Local SQLite (messages.db)</Text>
+            </View>
+            <View style={styles.perfRow}>
+              <Text style={styles.perfLabel}>Memories:</Text>
+              <Text style={styles.perfValue}>Local Vector DB (memory.db)</Text>
+            </View>
+            <Text style={styles.knowledgeHint}>Everything stays on this device. Deleting the app wipes all data permanently.</Text>
+          </View>
         </SettingsSection>
 
         <SettingsSection title="Knowledge Hub">

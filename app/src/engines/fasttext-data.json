@@ -1,0 +1,3098 @@
+[
+  {
+    "text": "what's the weather like",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "what's the weather like can you tell me",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "I want to know what's the weather like",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "please what's the weather like",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "hey lyla what's the weather like",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "what's the weather like just wondering",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "is it raining",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "can you tell me is it raining",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "I want to know is it raining",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "is it raining please",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "is it raining hey lyla",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "is it raining just wondering",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "temperature outside",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "temperature outside can you tell me",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "temperature outside I want to know",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "please temperature outside",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "hey lyla temperature outside",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "just wondering temperature outside",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "do I need an umbrella",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "can you tell me do I need an umbrella",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "I want to know do I need an umbrella",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "please do I need an umbrella",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "do I need an umbrella hey lyla",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "do I need an umbrella just wondering",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather forecast for tomorrow",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather forecast for tomorrow can you tell me",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "I want to know weather forecast for tomorrow",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather forecast for tomorrow please",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "hey lyla weather forecast for tomorrow",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather forecast for tomorrow just wondering",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "how hot is it",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "can you tell me how hot is it",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "I want to know how hot is it",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "please how hot is it",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "hey lyla how hot is it",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "how hot is it just wondering",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "current weather in Tokyo",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "can you tell me current weather in Tokyo",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "current weather in Tokyo I want to know",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "current weather in Tokyo please",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "current weather in Tokyo hey lyla",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "just wondering current weather in Tokyo",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "will it snow",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "will it snow can you tell me",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "I want to know will it snow",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "please will it snow",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "will it snow hey lyla",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "will it snow just wondering",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather can you tell me",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather I want to know",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "please weather",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather hey lyla",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "weather just wondering",
+    "intent": "knowledge_weather"
+  },
+  {
+    "text": "tell me about France",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "can you tell me tell me about France",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "I want to know tell me about France",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "tell me about France please",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "tell me about France hey lyla",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "tell me about France just wondering",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "capital of Japan",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "capital of Japan can you tell me",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "capital of Japan I want to know",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "capital of Japan please",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "capital of Japan hey lyla",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "capital of Japan just wondering",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "population of Brazil",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "can you tell me population of Brazil",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "I want to know population of Brazil",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "please population of Brazil",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "hey lyla population of Brazil",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "just wondering population of Brazil",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "what language is spoken in Spain",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "what language is spoken in Spain can you tell me",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "I want to know what language is spoken in Spain",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "please what language is spoken in Spain",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "hey lyla what language is spoken in Spain",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "just wondering what language is spoken in Spain",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "where is Kenya",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "where is Kenya can you tell me",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "I want to know where is Kenya",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "please where is Kenya",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "hey lyla where is Kenya",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "just wondering where is Kenya",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "country info for Canada",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "country info for Canada can you tell me",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "country info for Canada I want to know",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "please country info for Canada",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "country info for Canada hey lyla",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "country info for Canada just wondering",
+    "intent": "knowledge_country"
+  },
+  {
+    "text": "who wrote harry potter",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "who wrote harry potter can you tell me",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "I want to know who wrote harry potter",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "please who wrote harry potter",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "who wrote harry potter hey lyla",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "just wondering who wrote harry potter",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "books by brandon sanderson",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "books by brandon sanderson can you tell me",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "I want to know books by brandon sanderson",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "please books by brandon sanderson",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "hey lyla books by brandon sanderson",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "books by brandon sanderson just wondering",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "when was 1984 published",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "can you tell me when was 1984 published",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "I want to know when was 1984 published",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "please when was 1984 published",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "when was 1984 published hey lyla",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "just wondering when was 1984 published",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "summary of the hobbit",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "summary of the hobbit can you tell me",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "summary of the hobbit I want to know",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "summary of the hobbit please",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "hey lyla summary of the hobbit",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "just wondering summary of the hobbit",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "find a book called dune",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "can you tell me find a book called dune",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "find a book called dune I want to know",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "find a book called dune please",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "hey lyla find a book called dune",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "find a book called dune just wondering",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "author of lord of the rings",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "can you tell me author of lord of the rings",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "author of lord of the rings I want to know",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "author of lord of the rings please",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "author of lord of the rings hey lyla",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "just wondering author of lord of the rings",
+    "intent": "knowledge_book"
+  },
+  {
+    "text": "academic papers on quantum computing",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "can you tell me academic papers on quantum computing",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "I want to know academic papers on quantum computing",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "please academic papers on quantum computing",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "academic papers on quantum computing hey lyla",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "academic papers on quantum computing just wondering",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "research about climate change",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "research about climate change can you tell me",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "I want to know research about climate change",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "please research about climate change",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "hey lyla research about climate change",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "just wondering research about climate change",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "find a scientific paper on neural networks",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "can you tell me find a scientific paper on neural networks",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "find a scientific paper on neural networks I want to know",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "please find a scientific paper on neural networks",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "find a scientific paper on neural networks hey lyla",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "just wondering find a scientific paper on neural networks",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "who authored attention is all you need",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "who authored attention is all you need can you tell me",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "I want to know who authored attention is all you need",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "please who authored attention is all you need",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "hey lyla who authored attention is all you need",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "just wondering who authored attention is all you need",
+    "intent": "knowledge_paper"
+  },
+  {
+    "text": "define ephemeral",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "define ephemeral can you tell me",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "I want to know define ephemeral",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "define ephemeral please",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "hey lyla define ephemeral",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "define ephemeral just wondering",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "what does serendipity mean",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "what does serendipity mean can you tell me",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "I want to know what does serendipity mean",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "what does serendipity mean please",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "what does serendipity mean hey lyla",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "just wondering what does serendipity mean",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "meaning of ubiquitous",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "can you tell me meaning of ubiquitous",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "I want to know meaning of ubiquitous",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "please meaning of ubiquitous",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "meaning of ubiquitous hey lyla",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "just wondering meaning of ubiquitous",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "definition of pragmatic",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "definition of pragmatic can you tell me",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "definition of pragmatic I want to know",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "definition of pragmatic please",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "hey lyla definition of pragmatic",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "definition of pragmatic just wondering",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "how to pronounce antidisestablishmentarianism",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "how to pronounce antidisestablishmentarianism can you tell me",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "I want to know how to pronounce antidisestablishmentarianism",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "how to pronounce antidisestablishmentarianism please",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "how to pronounce antidisestablishmentarianism hey lyla",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "just wondering how to pronounce antidisestablishmentarianism",
+    "intent": "knowledge_dictionary"
+  },
+  {
+    "text": "convert 50 USD to EUR",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "can you tell me convert 50 USD to EUR",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "convert 50 USD to EUR I want to know",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "please convert 50 USD to EUR",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "hey lyla convert 50 USD to EUR",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "convert 50 USD to EUR just wondering",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "how much is 100 yen in dollars",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "can you tell me how much is 100 yen in dollars",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "how much is 100 yen in dollars I want to know",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "please how much is 100 yen in dollars",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "how much is 100 yen in dollars hey lyla",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "just wondering how much is 100 yen in dollars",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "exchange rate for GBP to INR",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "can you tell me exchange rate for GBP to INR",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "I want to know exchange rate for GBP to INR",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "exchange rate for GBP to INR please",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "exchange rate for GBP to INR hey lyla",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "exchange rate for GBP to INR just wondering",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "currency conversion for CAD to AUD",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "currency conversion for CAD to AUD can you tell me",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "currency conversion for CAD to AUD I want to know",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "please currency conversion for CAD to AUD",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "currency conversion for CAD to AUD hey lyla",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "currency conversion for CAD to AUD just wondering",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "what's the dollar worth today",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "what's the dollar worth today can you tell me",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "what's the dollar worth today I want to know",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "what's the dollar worth today please",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "what's the dollar worth today hey lyla",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "what's the dollar worth today just wondering",
+    "intent": "knowledge_currency"
+  },
+  {
+    "text": "when is thanksgiving",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is thanksgiving can you tell me",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "I want to know when is thanksgiving",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "please when is thanksgiving",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is thanksgiving hey lyla",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is thanksgiving just wondering",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "is today a public holiday",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "is today a public holiday can you tell me",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "I want to know is today a public holiday",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "is today a public holiday please",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "hey lyla is today a public holiday",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "is today a public holiday just wondering",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is christmas in 2026",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is christmas in 2026 can you tell me",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is christmas in 2026 I want to know",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "please when is christmas in 2026",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is christmas in 2026 hey lyla",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "just wondering when is christmas in 2026",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "holidays in the US next month",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "holidays in the US next month can you tell me",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "holidays in the US next month I want to know",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "holidays in the US next month please",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "holidays in the US next month hey lyla",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "just wondering holidays in the US next month",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is independence day",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is independence day can you tell me",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is independence day I want to know",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is independence day please",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "hey lyla when is independence day",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "when is independence day just wondering",
+    "intent": "knowledge_holiday"
+  },
+  {
+    "text": "who is the president of the US",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "who is the president of the US can you tell me",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "I want to know who is the president of the US",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "please who is the president of the US",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "who is the president of the US hey lyla",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "who is the president of the US just wondering",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "how far is the moon",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "can you tell me how far is the moon",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "how far is the moon I want to know",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "how far is the moon please",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "hey lyla how far is the moon",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "how far is the moon just wondering",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "when did WW2 end",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "when did WW2 end can you tell me",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "I want to know when did WW2 end",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "when did WW2 end please",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "when did WW2 end hey lyla",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "just wondering when did WW2 end",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "who invented the telephone",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "who invented the telephone can you tell me",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "who invented the telephone I want to know",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "please who invented the telephone",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "hey lyla who invented the telephone",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "just wondering who invented the telephone",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "what is the speed of light",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "what is the speed of light can you tell me",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "I want to know what is the speed of light",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "please what is the speed of light",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "hey lyla what is the speed of light",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "what is the speed of light just wondering",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "tell me a fact",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "tell me a fact can you tell me",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "I want to know tell me a fact",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "please tell me a fact",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "tell me a fact hey lyla",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "tell me a fact just wondering",
+    "intent": "knowledge_general"
+  },
+  {
+    "text": "what's on my calendar today",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "what's on my calendar today can you tell me",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "what's on my calendar today I want to know",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "please what's on my calendar today",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "what's on my calendar today hey lyla",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "what's on my calendar today just wondering",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "do I have any meetings tomorrow",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "do I have any meetings tomorrow can you tell me",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "do I have any meetings tomorrow I want to know",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "please do I have any meetings tomorrow",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "do I have any meetings tomorrow hey lyla",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "just wondering do I have any meetings tomorrow",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "check my schedule for friday",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "check my schedule for friday can you tell me",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "check my schedule for friday I want to know",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "check my schedule for friday please",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "hey lyla check my schedule for friday",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "just wondering check my schedule for friday",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "what is my next event",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "can you tell me what is my next event",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "I want to know what is my next event",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "what is my next event please",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "hey lyla what is my next event",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "just wondering what is my next event",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "calendar for next week",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "can you tell me calendar for next week",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "I want to know calendar for next week",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "please calendar for next week",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "calendar for next week hey lyla",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "calendar for next week just wondering",
+    "intent": "calendar_query"
+  },
+  {
+    "text": "schedule a meeting with John at 3pm",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "schedule a meeting with John at 3pm can you tell me",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "schedule a meeting with John at 3pm I want to know",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "please schedule a meeting with John at 3pm",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "hey lyla schedule a meeting with John at 3pm",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "just wondering schedule a meeting with John at 3pm",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "create an event for doctor appointment tomorrow",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "can you tell me create an event for doctor appointment tomorrow",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "I want to know create an event for doctor appointment tomorrow",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "please create an event for doctor appointment tomorrow",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "hey lyla create an event for doctor appointment tomorrow",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "just wondering create an event for doctor appointment tomorrow",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "add lunch with mom to my calendar for Sunday 1pm",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "add lunch with mom to my calendar for Sunday 1pm can you tell me",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "I want to know add lunch with mom to my calendar for Sunday 1pm",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "add lunch with mom to my calendar for Sunday 1pm please",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "add lunch with mom to my calendar for Sunday 1pm hey lyla",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "add lunch with mom to my calendar for Sunday 1pm just wondering",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "book a slot for gym at 6am",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "book a slot for gym at 6am can you tell me",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "I want to know book a slot for gym at 6am",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "book a slot for gym at 6am please",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "hey lyla book a slot for gym at 6am",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "just wondering book a slot for gym at 6am",
+    "intent": "calendar_create"
+  },
+  {
+    "text": "what is John's phone number",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "can you tell me what is John's phone number",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "what is John's phone number I want to know",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "please what is John's phone number",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "hey lyla what is John's phone number",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "just wondering what is John's phone number",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "find email for Sarah",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "find email for Sarah can you tell me",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "find email for Sarah I want to know",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "please find email for Sarah",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "hey lyla find email for Sarah",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "just wondering find email for Sarah",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "get contact info for mom",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "get contact info for mom can you tell me",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "get contact info for mom I want to know",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "get contact info for mom please",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "get contact info for mom hey lyla",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "get contact info for mom just wondering",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "do I have a contact named Michael",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "can you tell me do I have a contact named Michael",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "do I have a contact named Michael I want to know",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "please do I have a contact named Michael",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "hey lyla do I have a contact named Michael",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "do I have a contact named Michael just wondering",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "look up David's address",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "can you tell me look up David's address",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "look up David's address I want to know",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "please look up David's address",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "hey lyla look up David's address",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "look up David's address just wondering",
+    "intent": "contact_lookup"
+  },
+  {
+    "text": "remind me to buy milk in 10 minutes",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "remind me to buy milk in 10 minutes can you tell me",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "remind me to buy milk in 10 minutes I want to know",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "please remind me to buy milk in 10 minutes",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "hey lyla remind me to buy milk in 10 minutes",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "remind me to buy milk in 10 minutes just wondering",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "set a reminder to call dad at 5pm",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "set a reminder to call dad at 5pm can you tell me",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "I want to know set a reminder to call dad at 5pm",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "please set a reminder to call dad at 5pm",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "set a reminder to call dad at 5pm hey lyla",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "set a reminder to call dad at 5pm just wondering",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "remind me tomorrow morning to check emails",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "remind me tomorrow morning to check emails can you tell me",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "I want to know remind me tomorrow morning to check emails",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "remind me tomorrow morning to check emails please",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "hey lyla remind me tomorrow morning to check emails",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "just wondering remind me tomorrow morning to check emails",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "create a reminder for laundry",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "create a reminder for laundry can you tell me",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "create a reminder for laundry I want to know",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "create a reminder for laundry please",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "create a reminder for laundry hey lyla",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "just wondering create a reminder for laundry",
+    "intent": "reminder_create"
+  },
+  {
+    "text": "what are my reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "can you tell me what are my reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "I want to know what are my reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "what are my reminders please",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "hey lyla what are my reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "what are my reminders just wondering",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "show me my pending reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "can you tell me show me my pending reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "I want to know show me my pending reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "show me my pending reminders please",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "show me my pending reminders hey lyla",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "show me my pending reminders just wondering",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "do I have any reminders set",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "do I have any reminders set can you tell me",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "do I have any reminders set I want to know",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "do I have any reminders set please",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "hey lyla do I have any reminders set",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "just wondering do I have any reminders set",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "list my active reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "can you tell me list my active reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "list my active reminders I want to know",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "please list my active reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "list my active reminders hey lyla",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "just wondering list my active reminders",
+    "intent": "reminder_list"
+  },
+  {
+    "text": "what is my sister's name",
+    "intent": "memory_query"
+  },
+  {
+    "text": "can you tell me what is my sister's name",
+    "intent": "memory_query"
+  },
+  {
+    "text": "I want to know what is my sister's name",
+    "intent": "memory_query"
+  },
+  {
+    "text": "please what is my sister's name",
+    "intent": "memory_query"
+  },
+  {
+    "text": "what is my sister's name hey lyla",
+    "intent": "memory_query"
+  },
+  {
+    "text": "what is my sister's name just wondering",
+    "intent": "memory_query"
+  },
+  {
+    "text": "do you remember my favorite food",
+    "intent": "memory_query"
+  },
+  {
+    "text": "do you remember my favorite food can you tell me",
+    "intent": "memory_query"
+  },
+  {
+    "text": "I want to know do you remember my favorite food",
+    "intent": "memory_query"
+  },
+  {
+    "text": "do you remember my favorite food please",
+    "intent": "memory_query"
+  },
+  {
+    "text": "do you remember my favorite food hey lyla",
+    "intent": "memory_query"
+  },
+  {
+    "text": "do you remember my favorite food just wondering",
+    "intent": "memory_query"
+  },
+  {
+    "text": "what did I tell you about my dog",
+    "intent": "memory_query"
+  },
+  {
+    "text": "what did I tell you about my dog can you tell me",
+    "intent": "memory_query"
+  },
+  {
+    "text": "I want to know what did I tell you about my dog",
+    "intent": "memory_query"
+  },
+  {
+    "text": "please what did I tell you about my dog",
+    "intent": "memory_query"
+  },
+  {
+    "text": "what did I tell you about my dog hey lyla",
+    "intent": "memory_query"
+  },
+  {
+    "text": "just wondering what did I tell you about my dog",
+    "intent": "memory_query"
+  },
+  {
+    "text": "where do I live",
+    "intent": "memory_query"
+  },
+  {
+    "text": "where do I live can you tell me",
+    "intent": "memory_query"
+  },
+  {
+    "text": "where do I live I want to know",
+    "intent": "memory_query"
+  },
+  {
+    "text": "where do I live please",
+    "intent": "memory_query"
+  },
+  {
+    "text": "where do I live hey lyla",
+    "intent": "memory_query"
+  },
+  {
+    "text": "just wondering where do I live",
+    "intent": "memory_query"
+  },
+  {
+    "text": "what is my wifi password",
+    "intent": "memory_query"
+  },
+  {
+    "text": "can you tell me what is my wifi password",
+    "intent": "memory_query"
+  },
+  {
+    "text": "I want to know what is my wifi password",
+    "intent": "memory_query"
+  },
+  {
+    "text": "please what is my wifi password",
+    "intent": "memory_query"
+  },
+  {
+    "text": "what is my wifi password hey lyla",
+    "intent": "memory_query"
+  },
+  {
+    "text": "just wondering what is my wifi password",
+    "intent": "memory_query"
+  },
+  {
+    "text": "forget that my favorite color is red",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "forget that my favorite color is red can you tell me",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "forget that my favorite color is red I want to know",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "please forget that my favorite color is red",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "hey lyla forget that my favorite color is red",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "just wondering forget that my favorite color is red",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "erase the memory about my dog",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "can you tell me erase the memory about my dog",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "erase the memory about my dog I want to know",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "please erase the memory about my dog",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "hey lyla erase the memory about my dog",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "just wondering erase the memory about my dog",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "delete the fact that I live in New York",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "can you tell me delete the fact that I live in New York",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "I want to know delete the fact that I live in New York",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "delete the fact that I live in New York please",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "hey lyla delete the fact that I live in New York",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "delete the fact that I live in New York just wondering",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "forget what I said yesterday",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "can you tell me forget what I said yesterday",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "I want to know forget what I said yesterday",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "please forget what I said yesterday",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "forget what I said yesterday hey lyla",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "forget what I said yesterday just wondering",
+    "intent": "memory_forget"
+  },
+  {
+    "text": "what's on my clipboard",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "can you tell me what's on my clipboard",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "what's on my clipboard I want to know",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "please what's on my clipboard",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "what's on my clipboard hey lyla",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "just wondering what's on my clipboard",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "paste the clipboard text",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "can you tell me paste the clipboard text",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "paste the clipboard text I want to know",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "please paste the clipboard text",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "hey lyla paste the clipboard text",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "just wondering paste the clipboard text",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "read my clipboard",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "read my clipboard can you tell me",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "read my clipboard I want to know",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "read my clipboard please",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "read my clipboard hey lyla",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "read my clipboard just wondering",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "show me what I copied",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "can you tell me show me what I copied",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "show me what I copied I want to know",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "please show me what I copied",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "show me what I copied hey lyla",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "show me what I copied just wondering",
+    "intent": "clipboard_read"
+  },
+  {
+    "text": "copy this to clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "can you tell me copy this to clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "copy this to clipboard I want to know",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "please copy this to clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "hey lyla copy this to clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "copy this to clipboard just wondering",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "save that text to my clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "can you tell me save that text to my clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "save that text to my clipboard I want to know",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "save that text to my clipboard please",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "save that text to my clipboard hey lyla",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "save that text to my clipboard just wondering",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "put 'hello' on my clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "can you tell me put 'hello' on my clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "I want to know put 'hello' on my clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "please put 'hello' on my clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "hey lyla put 'hello' on my clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "just wondering put 'hello' on my clipboard",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "copy the summary",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "can you tell me copy the summary",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "I want to know copy the summary",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "copy the summary please",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "copy the summary hey lyla",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "just wondering copy the summary",
+    "intent": "clipboard_write"
+  },
+  {
+    "text": "read this out loud",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "read this out loud can you tell me",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "read this out loud I want to know",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "read this out loud please",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "read this out loud hey lyla",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "read this out loud just wondering",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "speak the last message",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "speak the last message can you tell me",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "speak the last message I want to know",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "speak the last message please",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "speak the last message hey lyla",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "speak the last message just wondering",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "use text to speech for this",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "use text to speech for this can you tell me",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "I want to know use text to speech for this",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "use text to speech for this please",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "use text to speech for this hey lyla",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "use text to speech for this just wondering",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "say this to me",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "can you tell me say this to me",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "say this to me I want to know",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "say this to me please",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "hey lyla say this to me",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "just wondering say this to me",
+    "intent": "tts_speak"
+  },
+  {
+    "text": "what time is it",
+    "intent": "time_query"
+  },
+  {
+    "text": "what time is it can you tell me",
+    "intent": "time_query"
+  },
+  {
+    "text": "I want to know what time is it",
+    "intent": "time_query"
+  },
+  {
+    "text": "what time is it please",
+    "intent": "time_query"
+  },
+  {
+    "text": "hey lyla what time is it",
+    "intent": "time_query"
+  },
+  {
+    "text": "what time is it just wondering",
+    "intent": "time_query"
+  },
+  {
+    "text": "current time",
+    "intent": "time_query"
+  },
+  {
+    "text": "current time can you tell me",
+    "intent": "time_query"
+  },
+  {
+    "text": "current time I want to know",
+    "intent": "time_query"
+  },
+  {
+    "text": "current time please",
+    "intent": "time_query"
+  },
+  {
+    "text": "hey lyla current time",
+    "intent": "time_query"
+  },
+  {
+    "text": "just wondering current time",
+    "intent": "time_query"
+  },
+  {
+    "text": "what's the time",
+    "intent": "time_query"
+  },
+  {
+    "text": "what's the time can you tell me",
+    "intent": "time_query"
+  },
+  {
+    "text": "I want to know what's the time",
+    "intent": "time_query"
+  },
+  {
+    "text": "please what's the time",
+    "intent": "time_query"
+  },
+  {
+    "text": "what's the time hey lyla",
+    "intent": "time_query"
+  },
+  {
+    "text": "just wondering what's the time",
+    "intent": "time_query"
+  },
+  {
+    "text": "tell me the time",
+    "intent": "time_query"
+  },
+  {
+    "text": "tell me the time can you tell me",
+    "intent": "time_query"
+  },
+  {
+    "text": "tell me the time I want to know",
+    "intent": "time_query"
+  },
+  {
+    "text": "please tell me the time",
+    "intent": "time_query"
+  },
+  {
+    "text": "hey lyla tell me the time",
+    "intent": "time_query"
+  },
+  {
+    "text": "just wondering tell me the time",
+    "intent": "time_query"
+  },
+  {
+    "text": "what's my battery level",
+    "intent": "battery_query"
+  },
+  {
+    "text": "what's my battery level can you tell me",
+    "intent": "battery_query"
+  },
+  {
+    "text": "what's my battery level I want to know",
+    "intent": "battery_query"
+  },
+  {
+    "text": "what's my battery level please",
+    "intent": "battery_query"
+  },
+  {
+    "text": "what's my battery level hey lyla",
+    "intent": "battery_query"
+  },
+  {
+    "text": "just wondering what's my battery level",
+    "intent": "battery_query"
+  },
+  {
+    "text": "how much battery do I have left",
+    "intent": "battery_query"
+  },
+  {
+    "text": "how much battery do I have left can you tell me",
+    "intent": "battery_query"
+  },
+  {
+    "text": "I want to know how much battery do I have left",
+    "intent": "battery_query"
+  },
+  {
+    "text": "please how much battery do I have left",
+    "intent": "battery_query"
+  },
+  {
+    "text": "hey lyla how much battery do I have left",
+    "intent": "battery_query"
+  },
+  {
+    "text": "how much battery do I have left just wondering",
+    "intent": "battery_query"
+  },
+  {
+    "text": "is my phone dying",
+    "intent": "battery_query"
+  },
+  {
+    "text": "is my phone dying can you tell me",
+    "intent": "battery_query"
+  },
+  {
+    "text": "is my phone dying I want to know",
+    "intent": "battery_query"
+  },
+  {
+    "text": "is my phone dying please",
+    "intent": "battery_query"
+  },
+  {
+    "text": "hey lyla is my phone dying",
+    "intent": "battery_query"
+  },
+  {
+    "text": "just wondering is my phone dying",
+    "intent": "battery_query"
+  },
+  {
+    "text": "battery percentage",
+    "intent": "battery_query"
+  },
+  {
+    "text": "battery percentage can you tell me",
+    "intent": "battery_query"
+  },
+  {
+    "text": "I want to know battery percentage",
+    "intent": "battery_query"
+  },
+  {
+    "text": "please battery percentage",
+    "intent": "battery_query"
+  },
+  {
+    "text": "battery percentage hey lyla",
+    "intent": "battery_query"
+  },
+  {
+    "text": "just wondering battery percentage",
+    "intent": "battery_query"
+  },
+  {
+    "text": "what device is this",
+    "intent": "device_query"
+  },
+  {
+    "text": "can you tell me what device is this",
+    "intent": "device_query"
+  },
+  {
+    "text": "I want to know what device is this",
+    "intent": "device_query"
+  },
+  {
+    "text": "what device is this please",
+    "intent": "device_query"
+  },
+  {
+    "text": "hey lyla what device is this",
+    "intent": "device_query"
+  },
+  {
+    "text": "just wondering what device is this",
+    "intent": "device_query"
+  },
+  {
+    "text": "is this an iphone or android",
+    "intent": "device_query"
+  },
+  {
+    "text": "is this an iphone or android can you tell me",
+    "intent": "device_query"
+  },
+  {
+    "text": "is this an iphone or android I want to know",
+    "intent": "device_query"
+  },
+  {
+    "text": "please is this an iphone or android",
+    "intent": "device_query"
+  },
+  {
+    "text": "is this an iphone or android hey lyla",
+    "intent": "device_query"
+  },
+  {
+    "text": "is this an iphone or android just wondering",
+    "intent": "device_query"
+  },
+  {
+    "text": "what os am I running",
+    "intent": "device_query"
+  },
+  {
+    "text": "can you tell me what os am I running",
+    "intent": "device_query"
+  },
+  {
+    "text": "I want to know what os am I running",
+    "intent": "device_query"
+  },
+  {
+    "text": "what os am I running please",
+    "intent": "device_query"
+  },
+  {
+    "text": "hey lyla what os am I running",
+    "intent": "device_query"
+  },
+  {
+    "text": "what os am I running just wondering",
+    "intent": "device_query"
+  },
+  {
+    "text": "device specs",
+    "intent": "device_query"
+  },
+  {
+    "text": "can you tell me device specs",
+    "intent": "device_query"
+  },
+  {
+    "text": "I want to know device specs",
+    "intent": "device_query"
+  },
+  {
+    "text": "device specs please",
+    "intent": "device_query"
+  },
+  {
+    "text": "hey lyla device specs",
+    "intent": "device_query"
+  },
+  {
+    "text": "device specs just wondering",
+    "intent": "device_query"
+  },
+  {
+    "text": "who are you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "who are you can you tell me",
+    "intent": "identity_query"
+  },
+  {
+    "text": "I want to know who are you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "please who are you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "hey lyla who are you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "just wondering who are you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what is your name",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what is your name can you tell me",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what is your name I want to know",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what is your name please",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what is your name hey lyla",
+    "intent": "identity_query"
+  },
+  {
+    "text": "just wondering what is your name",
+    "intent": "identity_query"
+  },
+  {
+    "text": "who made you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "who made you can you tell me",
+    "intent": "identity_query"
+  },
+  {
+    "text": "who made you I want to know",
+    "intent": "identity_query"
+  },
+  {
+    "text": "please who made you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "hey lyla who made you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "just wondering who made you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "are you an ai",
+    "intent": "identity_query"
+  },
+  {
+    "text": "can you tell me are you an ai",
+    "intent": "identity_query"
+  },
+  {
+    "text": "are you an ai I want to know",
+    "intent": "identity_query"
+  },
+  {
+    "text": "please are you an ai",
+    "intent": "identity_query"
+  },
+  {
+    "text": "hey lyla are you an ai",
+    "intent": "identity_query"
+  },
+  {
+    "text": "are you an ai just wondering",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what are you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what are you can you tell me",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what are you I want to know",
+    "intent": "identity_query"
+  },
+  {
+    "text": "please what are you",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what are you hey lyla",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what are you just wondering",
+    "intent": "identity_query"
+  },
+  {
+    "text": "what can you do",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what can you do can you tell me",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "I want to know what can you do",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what can you do please",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what can you do hey lyla",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what can you do just wondering",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what are your limits",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "can you tell me what are your limits",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "I want to know what are your limits",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what are your limits please",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "hey lyla what are your limits",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what are your limits just wondering",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "can you see pictures",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "can you tell me can you see pictures",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "can you see pictures I want to know",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "please can you see pictures",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "can you see pictures hey lyla",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "can you see pictures just wondering",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "do you have internet access",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "do you have internet access can you tell me",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "do you have internet access I want to know",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "please do you have internet access",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "hey lyla do you have internet access",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "just wondering do you have internet access",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what are your capabilities",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "can you tell me what are your capabilities",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "I want to know what are your capabilities",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "please what are your capabilities",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what are your capabilities hey lyla",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "just wondering what are your capabilities",
+    "intent": "limitations_query"
+  },
+  {
+    "text": "what is 5 plus 5",
+    "intent": "math_query"
+  },
+  {
+    "text": "can you tell me what is 5 plus 5",
+    "intent": "math_query"
+  },
+  {
+    "text": "I want to know what is 5 plus 5",
+    "intent": "math_query"
+  },
+  {
+    "text": "please what is 5 plus 5",
+    "intent": "math_query"
+  },
+  {
+    "text": "what is 5 plus 5 hey lyla",
+    "intent": "math_query"
+  },
+  {
+    "text": "what is 5 plus 5 just wondering",
+    "intent": "math_query"
+  },
+  {
+    "text": "calculate 20 percent of 50",
+    "intent": "math_query"
+  },
+  {
+    "text": "can you tell me calculate 20 percent of 50",
+    "intent": "math_query"
+  },
+  {
+    "text": "I want to know calculate 20 percent of 50",
+    "intent": "math_query"
+  },
+  {
+    "text": "please calculate 20 percent of 50",
+    "intent": "math_query"
+  },
+  {
+    "text": "hey lyla calculate 20 percent of 50",
+    "intent": "math_query"
+  },
+  {
+    "text": "calculate 20 percent of 50 just wondering",
+    "intent": "math_query"
+  },
+  {
+    "text": "sqrt of 144",
+    "intent": "math_query"
+  },
+  {
+    "text": "can you tell me sqrt of 144",
+    "intent": "math_query"
+  },
+  {
+    "text": "I want to know sqrt of 144",
+    "intent": "math_query"
+  },
+  {
+    "text": "sqrt of 144 please",
+    "intent": "math_query"
+  },
+  {
+    "text": "sqrt of 144 hey lyla",
+    "intent": "math_query"
+  },
+  {
+    "text": "sqrt of 144 just wondering",
+    "intent": "math_query"
+  },
+  {
+    "text": "how much is 100 divided by 3",
+    "intent": "math_query"
+  },
+  {
+    "text": "how much is 100 divided by 3 can you tell me",
+    "intent": "math_query"
+  },
+  {
+    "text": "how much is 100 divided by 3 I want to know",
+    "intent": "math_query"
+  },
+  {
+    "text": "please how much is 100 divided by 3",
+    "intent": "math_query"
+  },
+  {
+    "text": "how much is 100 divided by 3 hey lyla",
+    "intent": "math_query"
+  },
+  {
+    "text": "how much is 100 divided by 3 just wondering",
+    "intent": "math_query"
+  },
+  {
+    "text": "do this math for me",
+    "intent": "math_query"
+  },
+  {
+    "text": "can you tell me do this math for me",
+    "intent": "math_query"
+  },
+  {
+    "text": "I want to know do this math for me",
+    "intent": "math_query"
+  },
+  {
+    "text": "please do this math for me",
+    "intent": "math_query"
+  },
+  {
+    "text": "do this math for me hey lyla",
+    "intent": "math_query"
+  },
+  {
+    "text": "do this math for me just wondering",
+    "intent": "math_query"
+  },
+  {
+    "text": "hello",
+    "intent": "chat"
+  },
+  {
+    "text": "can you tell me hello",
+    "intent": "chat"
+  },
+  {
+    "text": "hello I want to know",
+    "intent": "chat"
+  },
+  {
+    "text": "please hello",
+    "intent": "chat"
+  },
+  {
+    "text": "hello hey lyla",
+    "intent": "chat"
+  },
+  {
+    "text": "hello just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "hi there",
+    "intent": "chat"
+  },
+  {
+    "text": "can you tell me hi there",
+    "intent": "chat"
+  },
+  {
+    "text": "hi there I want to know",
+    "intent": "chat"
+  },
+  {
+    "text": "please hi there",
+    "intent": "chat"
+  },
+  {
+    "text": "hey lyla hi there",
+    "intent": "chat"
+  },
+  {
+    "text": "hi there just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "how are you",
+    "intent": "chat"
+  },
+  {
+    "text": "how are you can you tell me",
+    "intent": "chat"
+  },
+  {
+    "text": "I want to know how are you",
+    "intent": "chat"
+  },
+  {
+    "text": "how are you please",
+    "intent": "chat"
+  },
+  {
+    "text": "hey lyla how are you",
+    "intent": "chat"
+  },
+  {
+    "text": "just wondering how are you",
+    "intent": "chat"
+  },
+  {
+    "text": "good morning",
+    "intent": "chat"
+  },
+  {
+    "text": "can you tell me good morning",
+    "intent": "chat"
+  },
+  {
+    "text": "good morning I want to know",
+    "intent": "chat"
+  },
+  {
+    "text": "good morning please",
+    "intent": "chat"
+  },
+  {
+    "text": "hey lyla good morning",
+    "intent": "chat"
+  },
+  {
+    "text": "good morning just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "thanks",
+    "intent": "chat"
+  },
+  {
+    "text": "can you tell me thanks",
+    "intent": "chat"
+  },
+  {
+    "text": "I want to know thanks",
+    "intent": "chat"
+  },
+  {
+    "text": "please thanks",
+    "intent": "chat"
+  },
+  {
+    "text": "thanks hey lyla",
+    "intent": "chat"
+  },
+  {
+    "text": "just wondering thanks",
+    "intent": "chat"
+  },
+  {
+    "text": "okay",
+    "intent": "chat"
+  },
+  {
+    "text": "can you tell me okay",
+    "intent": "chat"
+  },
+  {
+    "text": "okay I want to know",
+    "intent": "chat"
+  },
+  {
+    "text": "please okay",
+    "intent": "chat"
+  },
+  {
+    "text": "hey lyla okay",
+    "intent": "chat"
+  },
+  {
+    "text": "okay just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "that's cool",
+    "intent": "chat"
+  },
+  {
+    "text": "that's cool can you tell me",
+    "intent": "chat"
+  },
+  {
+    "text": "I want to know that's cool",
+    "intent": "chat"
+  },
+  {
+    "text": "please that's cool",
+    "intent": "chat"
+  },
+  {
+    "text": "hey lyla that's cool",
+    "intent": "chat"
+  },
+  {
+    "text": "that's cool just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "I'm feeling sad today",
+    "intent": "chat"
+  },
+  {
+    "text": "I'm feeling sad today can you tell me",
+    "intent": "chat"
+  },
+  {
+    "text": "I'm feeling sad today I want to know",
+    "intent": "chat"
+  },
+  {
+    "text": "please I'm feeling sad today",
+    "intent": "chat"
+  },
+  {
+    "text": "I'm feeling sad today hey lyla",
+    "intent": "chat"
+  },
+  {
+    "text": "I'm feeling sad today just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "let's talk",
+    "intent": "chat"
+  },
+  {
+    "text": "can you tell me let's talk",
+    "intent": "chat"
+  },
+  {
+    "text": "let's talk I want to know",
+    "intent": "chat"
+  },
+  {
+    "text": "please let's talk",
+    "intent": "chat"
+  },
+  {
+    "text": "hey lyla let's talk",
+    "intent": "chat"
+  },
+  {
+    "text": "let's talk just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "tell me a joke",
+    "intent": "chat"
+  },
+  {
+    "text": "can you tell me tell me a joke",
+    "intent": "chat"
+  },
+  {
+    "text": "I want to know tell me a joke",
+    "intent": "chat"
+  },
+  {
+    "text": "please tell me a joke",
+    "intent": "chat"
+  },
+  {
+    "text": "tell me a joke hey lyla",
+    "intent": "chat"
+  },
+  {
+    "text": "tell me a joke just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "I just watched a great movie",
+    "intent": "chat"
+  },
+  {
+    "text": "I just watched a great movie can you tell me",
+    "intent": "chat"
+  },
+  {
+    "text": "I just watched a great movie I want to know",
+    "intent": "chat"
+  },
+  {
+    "text": "I just watched a great movie please",
+    "intent": "chat"
+  },
+  {
+    "text": "I just watched a great movie hey lyla",
+    "intent": "chat"
+  },
+  {
+    "text": "just wondering I just watched a great movie",
+    "intent": "chat"
+  },
+  {
+    "text": "yeah exactly",
+    "intent": "chat"
+  },
+  {
+    "text": "can you tell me yeah exactly",
+    "intent": "chat"
+  },
+  {
+    "text": "I want to know yeah exactly",
+    "intent": "chat"
+  },
+  {
+    "text": "please yeah exactly",
+    "intent": "chat"
+  },
+  {
+    "text": "hey lyla yeah exactly",
+    "intent": "chat"
+  },
+  {
+    "text": "yeah exactly just wondering",
+    "intent": "chat"
+  },
+  {
+    "text": "no problem",
+    "intent": "chat"
+  },
+  {
+    "text": "no problem can you tell me",
+    "intent": "chat"
+  },
+  {
+    "text": "no problem I want to know",
+    "intent": "chat"
+  },
+  {
+    "text": "no problem please",
+    "intent": "chat"
+  },
+  {
+    "text": "hey lyla no problem",
+    "intent": "chat"
+  },
+  {
+    "text": "just wondering no problem",
+    "intent": "chat"
+  }
+]

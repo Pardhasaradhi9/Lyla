@@ -45,6 +45,18 @@ export default function RootLayout() {
       })
       .catch((e) => console.error('[App] Database init failed:', e));
 
+    import('expo-av').then(({ Audio, InterruptionModeIOS, InterruptionModeAndroid }) => {
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+        staysActiveInBackground: false,
+      }).catch(e => console.warn('[App] Audio ducking setup failed:', e));
+    });
+
     isOnline().then(setIsOnline);
     const unsubscribe = onNetworkChange(setIsOnline);
     setIsAppReady(true);

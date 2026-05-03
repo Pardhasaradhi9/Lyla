@@ -480,6 +480,17 @@ export default function HomeScreen() {
               return chatRepository.updateConversation(activeConvoId!, title);
             });
           })
+          .then(() => {
+            // Trigger adaptive context compression in the background
+            if (orchestratorRef.current) {
+              orchestratorRef.current.compressContext(activeConvoId!).then((compressed) => {
+                if (compressed) {
+                  // Reload UI messages to reflect the compressed context
+                  loadConversation(activeConvoId!);
+                }
+              });
+            }
+          })
           .catch(e => console.warn('[Chat] DB persist failed:', e));
       }
 

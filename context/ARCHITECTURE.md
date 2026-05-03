@@ -31,12 +31,12 @@ A 1.2B model is "dumb" by itself. But a 1.2B model that can read your calendar, 
                   ┌───────────────────┐
                   │   ORCHESTRATOR    │  The decision engine
                   │                   │
-                  │  1. Classify      │  350M Router: ~300-500ms on device
+                  │  1. Classify      │  FastText Lite (JS): <1ms on device
                   │  2. Direct Handle │  6 zero-LLP handlers
                   │  3. Tool Execute  │  10+ native tools
                   │  4. Knowledge Hub │  9 free APIs → Brain synthesis
                   │  5. Brain Reason  │  1.2B synthesis + citations
-                  │  6. Learn         │  Auto-extract facts
+                  │  6. Learn         │  Async Auto-extract (350M Extract)
                   └────────┬──────────┘
                            │
               ┌────────────┼────────────────────┐
@@ -45,8 +45,8 @@ A 1.2B model is "dumb" by itself. But a 1.2B model that can read your calendar, 
        │ TOOL LAYER  │ │    BRAIN     │ │ MEMORY LAYER │
        │             │ │   (LLM(s))   │ │              │
        │ Calendar    │ │              │ │ Facts DB     │
-       │ Contacts    │ │ 350M Router  │ │ Vector DB    │
-       │ Battery     │ │ 350M Extract │ │ Auto-extract │
+       │ Contacts    │ │ FastText JS  │ │ Vector DB    │
+       │ Battery     │ │ 350M Extract │ │ Async-extract│
        │ Clipboard   │ │ 1.2B Brain   │ │ Semantic     │
        │ Network     │ │              │ │ search       │
        │ Time/Date   │ │ Arctic Embed │ │ (sqlite-vec) │

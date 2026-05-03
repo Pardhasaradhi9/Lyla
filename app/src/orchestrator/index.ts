@@ -477,41 +477,140 @@ async function runBrain(
 
 type FactExtractorFn = (userMsg: string, assistantMsg: string) => Promise<Array<{ fact: string; category: string; entity: string | null }>>;
 
-function autoExtractFacts(userMessage: string, assistantResponse: string, llmExtractor?: FactExtractorFn): void {
+let extractionTimeout: NodeJS.Timeout | null = null;
+
+function autoExtractFacts(userMessage: string, assistantResponse: string, _legacyExtractor?: FactExtractorFn): void {
   if (!useSettingsStore.getState().memoryEnabled) return;
   if (userMessage.length < 10) return;
   if (/^(hi|hello|hey|thanks|ok|sure|yes|no|bye|lol|haha|cool|nice|great|wow)\b/i.test(userMessage.trim())) return;
 
-  try {
-    const facts = extractFacts(userMessage);
-    if (facts.length > 0) {
-      for (const fact of facts.slice(0, 3)) {
-        // Dedup check — skip if a very similar memory already exists
-        memoryEngine.findSimilar(fact.fact, 1).then(existing => {
-          if (existing.length === 0 || existing[0].distance > 0.5) {
-            memoryEngine.addMemory(fact.fact, fact.entity || undefined, fact.category).catch(() => {});
-          } else {
-            console.log(`[AutoExtract] Skipped duplicate: "${fact.fact}" (distance=${existing[0].distance.toFixed(2)})`);
-          }
-        }).catch(() => {
-          // If dedup check fails, save anyway
-          memoryEngine.addMemory(fact.fact, fact.entity || undefined, fact.category).catch(() => {});
-        });
+  if (extractionTimeout) {
+    clearTimeout(extractionTimeout);
+  }
+
+  extractionTimeout = setTimeout(async () => {
+    try {
+      const FileSystem = require('expo-file-system');
+      const { MODELS } = require('@/utils/constants');
+      const { extractorEngine } = require('@/engines/extractor');
+
+      const modelPath = FileSystem.documentDirectory + MODELS.EXTRACT_LLM.fileName;
+      const fileInfo = await FileSystem.getInfoAsync(modelPath);
+      
+      if (!fileInfo.exists) {
+        console.warn('[AutoExtract] Extractor model not downloaded yet.');
+        return;
       }
-      return;
-    }
-    if (llmExtractor) {
-      llmExtractor(userMessage, assistantResponse)
-        .then((llmFacts) => {
-          for (const fact of llmFacts.slice(0, 3)) {
-            memoryEngine.addMemory(fact.fact, fact.entity ?? undefined, fact.category).catch(() => {});
+
+      console.log('[AutoExtract] Idle detected. Loading Extractor...');
+      await extractorEngine.init(modelPath);
+
+      const facts = await extractorEngine.extractFacts(userMessage, assistantResponse);
+      
+      if (facts.length > 0) {
+        for (const fact of facts.slice(0, 3)) {
+          try {
+            const existing = await memoryEngine.findSimilar(fact.fact, 1);
+            if (existing.length === 0 || existing[0].distance > 0.5) {
+              await memoryEngine.addMemory(fact.fact, fact.entity || undefined, fact.category);
+              console.log(`[AutoExtract] Saved fact: "${fact.fact}"`);
+            } else {
+              console.log(`[AutoExtract] Skipped duplicate: "${fact.fact}"`);
+            }
+          } catch (e) {
+            console.error('[AutoExtract] Error checking duplicate:', e);
           }
-        })
-        .catch(() => {});
+        }
+      }
+      
+      console.log('[AutoExtract] Releasing Extractor model...');
+      await extractorEngine.release();
+    } catch (e) {
+      console.error('[AutoExtract] Extraction failed:', e);
+      try {
+        const { extractorEngine } = require('@/engines/extractor');
+        await extractorEngine.release();
+      } catch (e2) {}
     }
-  } catch {}
+  }, 5000);
 }
 
 
+
+    },
+    
+    /**
+     * Adaptive Context Compression
+     * Called after an assistant message. If the conversation has > 20 messages,
+     * it summarizes the oldest 10 and replaces them in SQLite.
+     */
+    async compressContext(conversationId: string): Promise<boolean> {
+      try {
+        const { chatRepository } = require('@/db/chat-repository');
+        const messages = await chatRepository.getMessages(conversationId);
+        
+        // Don't compress unless we have a long history
+        if (messages.length < 20) return false;
+        
+        // Find the boundary to compress (skip existing summaries)
+        let startIndex = 0;
+        if (messages[0].role === 'system' && messages[0].content.includes('[System Summary')) {
+          startIndex = 1;
+        }
+        
+        // Compress the next 10 messages
+        const toCompress = messages.slice(startIndex, startIndex + 10);
+        if (toCompress.length < 5) return false; // Not enough new messages to compress
+        
+        const historyText = toCompress.map(m => `${m.role}: ${m.content}`).join('\n\n');
+        
+        // Use Brain model to summarize
+        const brainReady = await config.isModelReady();
+        if (!brainReady) {
+          console.warn('[AdaptiveContext] Brain model not loaded for compression.');
+          return false;
+        }
+        
+        console.log(`[AdaptiveContext] Compressing ${toCompress.length} messages...`);
+        const summary = await config.streamCompletion(
+          [{ role: 'user', content: `Summarize the key facts, decisions, and narrative context of this conversation fragment succinctly. Do not respond to it, just summarize what was discussed:\n\n${historyText}` }],
+          () => {},
+          "You are an objective summarizer. Output a concise 3-4 sentence paragraph."
+        );
+        
+        const finalSummary = `[System Summary of previous context: ${summary.trim()}]`;
+        
+        // Delete the compressed messages
+        for (const m of toCompress) {
+          await chatRepository.deleteMessage(m.id);
+        }
+        
+        // If there was an existing summary, update it, otherwise insert a new one
+        if (startIndex === 1) {
+          const oldSummary = messages[0].content;
+          const mergedSummary = `[System Summary of previous context: ${oldSummary.replace('[System Summary of previous context: ', '').replace(']', '')} AND ${summary.trim()}]`;
+          await chatRepository.updateMessage(messages[0].id, mergedSummary);
+        } else {
+          // Insert at the beginning of time
+          const FileSystem = require('expo-file-system');
+          const db = require('@/db/database').getDatabase();
+          // We manually insert with an older timestamp to ensure it stays at the top
+          const oldTime = toCompress[toCompress.length - 1].created_at - 1;
+          const newId = `sum-${Date.now()}`;
+          await db.runAsync(
+            'INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)',
+            newId, conversationId, 'system', finalSummary, oldTime
+          );
+        }
+        
+        console.log('[AdaptiveContext] Compression complete.');
+        return true;
+      } catch (e) {
+        console.error('[AdaptiveContext] Compression failed:', e);
+        return false;
+      }
+    }
+  };
+}
 
 export type Orchestrator = ReturnType<typeof createOrchestrator>;
