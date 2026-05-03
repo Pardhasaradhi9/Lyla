@@ -99,17 +99,41 @@ async function cachedFetch(
 }
 
 async function handleWeather(message: string): Promise<KnowledgeResult[]> {
-  const lat = 17.385;
-  const lon = 78.486;
-  const locationMatch = message.match(/(?:in|at|for)\s+([\w\s]+?)(?:\s*[?.!]?\s*$|\s+(?:today|tomorrow|now)\b)/i);
+  const locationMatch = message.match(/(?:in|at|for)\s+([\w\s]+?)(?:\s*[?.!]?\s*$|\s+(?:today|tomorrow|now|this)\b)/i)
+    ?? message.match(/(?:weather|temperature|forecast|rain)\s+(?:in|at|for)\s+([\w\s]+?)(?:\s*[?.!]?\s*$)/i);
   const location = locationMatch?.[1]?.trim();
 
+  if (location) {
+    const geo = await geocodeCity(location);
+    if (geo) {
+      return cachedFetch(
+        `weather:${location.toLowerCase()}:${geo.lat}:${geo.lon}`,
+        'open-meteo',
+        CACHE_TTL.WEATHER,
+        () => getWeather(geo.lat, geo.lon, location),
+      );
+    }
+  }
+
   return cachedFetch(
-    `weather:${lat}:${lon}`,
+    'weather:default',
     'open-meteo',
     CACHE_TTL.WEATHER,
-    () => getWeather(lat, lon, location),
+    () => getWeather(17.385, 78.486, 'your location'),
   );
+}
+
+async function geocodeCity(city: string): Promise<{ lat: number; lon: number } | null> {
+  try {
+    const res = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en`,
+    );
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+      return { lat: data.results[0].latitude, lon: data.results[0].longitude };
+    }
+  } catch {}
+  return null;
 }
 
 async function handleCountry(message: string): Promise<KnowledgeResult[]> {

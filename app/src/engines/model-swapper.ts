@@ -1,8 +1,9 @@
 import * as ExpoDevice from 'expo-device';
 import { llmEngine } from './llm';
 import { routerEngine } from './router';
-import { MODELS, LLM_CONFIG } from '@/utils/constants';
+import { MODELS } from '@/utils/constants';
 import { modelExists, getModelPath } from '@/utils/model-manager';
+import { useAppStore } from '@/stores/app-store';
 
 export type ActiveModel = 'none' | 'router' | 'brain';
 
@@ -44,20 +45,19 @@ export async function loadRouter(): Promise<void> {
   }
   const path = await getModelPath(fileName);
   await routerEngine.init(path);
+  useAppStore.getState().setActiveModel('router');
   console.log('[ModelSwapper] Router loaded');
 }
 
 export async function loadBrain(): Promise<void> {
-  const profile = await getDeviceProfile();
-  const fileName = profile.brainQuant === 'Q6_K'
-    ? MODELS.PRIMARY_LLM.fileName
-    : MODELS.PRIMARY_LLM.fileName;
+  const fileName = MODELS.PRIMARY_LLM.fileName;
 
   if (!(await modelExists(fileName))) {
     throw new Error(`Brain model not downloaded: ${fileName}`);
   }
   const path = await getModelPath(fileName);
   await llmEngine.init(path);
+  useAppStore.getState().setActiveModel('brain');
   console.log('[ModelSwapper] Brain loaded');
 }
 
@@ -71,6 +71,7 @@ export async function swapToBrain(): Promise<void> {
 
   if (!profile.canLoadBoth && routerEngine.isLoaded) {
     await routerEngine.release();
+    useAppStore.getState().setActiveModel('none');
     console.log('[ModelSwapper] Router released (swap)');
   }
 
@@ -84,6 +85,7 @@ export async function swapToRouter(): Promise<void> {
 
   if (!profile.canLoadBoth && llmEngine.isLoaded) {
     await llmEngine.release();
+    useAppStore.getState().setActiveModel('none');
     console.log('[ModelSwapper] Brain released (swap)');
   }
 
@@ -95,6 +97,7 @@ export async function swapToRouter(): Promise<void> {
 export async function releaseAll(): Promise<void> {
   if (llmEngine.isLoaded) await llmEngine.release();
   if (routerEngine.isLoaded) await routerEngine.release();
+  useAppStore.getState().setActiveModel('none');
 }
 
 export function getActiveModel(): ActiveModel {

@@ -16,6 +16,7 @@ INTENT LIST (pick one):
 - clipboard_read: requesting to read clipboard contents
 - clipboard_write: requesting to copy text to clipboard
 - tts_speak: requesting to read text aloud
+- math_query: asking to calculate, compute, convert units, or solve math (percentages, arithmetic, trig, etc.)
 - knowledge_weather: asking about weather, temperature, forecast
 - knowledge_country: asking about a country's facts (capital, population, etc.)
 - knowledge_book: asking about a book, author, or novel
@@ -56,6 +57,9 @@ EXAMPLES:
 "Read my clipboard" → {"intent":"clipboard_read","needs_brain":false}
 "Copy that" → {"intent":"clipboard_write","needs_brain":false}
 "Read that back to me" → {"intent":"tts_speak","needs_brain":false}
+"What's 15% of 2400?" → {"intent":"math_query","needs_brain":false}
+"Convert 100km to miles" → {"intent":"math_query","needs_brain":false}
+"sqrt(144)" → {"intent":"math_query","needs_brain":false}
 "How hot is it outside?" → {"intent":"knowledge_weather","needs_brain":false}
 "Do I need an umbrella?" → {"intent":"knowledge_weather","needs_brain":true}
 "Capital of Japan" → {"intent":"knowledge_country","needs_brain":false}

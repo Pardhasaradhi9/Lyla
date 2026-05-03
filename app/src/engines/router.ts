@@ -25,6 +25,7 @@ export type Intent =
   | 'memory_query' | 'memory_forget'
   | 'clipboard_read' | 'clipboard_write'
   | 'tts_speak'
+  | 'math_query'
   | 'knowledge_weather' | 'knowledge_country' | 'knowledge_book'
   | 'knowledge_paper' | 'knowledge_dictionary' | 'knowledge_currency'
   | 'knowledge_holiday' | 'knowledge_general'
@@ -40,6 +41,7 @@ export const VALID_INTENTS: Set<string> = new Set<Intent>([
   'memory_query', 'memory_forget',
   'clipboard_read', 'clipboard_write',
   'tts_speak',
+  'math_query',
   'knowledge_weather', 'knowledge_country', 'knowledge_book',
   'knowledge_paper', 'knowledge_dictionary', 'knowledge_currency',
   'knowledge_holiday', 'knowledge_general',

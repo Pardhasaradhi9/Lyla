@@ -27,11 +27,7 @@ export function formatModelResponse(raw: string): { response: string } {
     .replace(/<\|endoftext\|>/g, '')
     .replace(/<\|startoftext\|>/g, '');
 
-  // ── Clean up markdown for chat display ─────────────────────────
-  response = response.replace(/^#{1,6}\s+/gm, '');
-  response = response.replace(/\*\*(.*?)\*\*/g, '$1');
-  response = response.replace(/\*(.*?)\*/g, '$1');
-  response = response.replace(/^-{3,}$/gm, '');
+  // ── Clean up excess whitespace ────────────────────────────────
   response = response.replace(/\n{3,}/g, '\n\n');
   response = response.trim();
 

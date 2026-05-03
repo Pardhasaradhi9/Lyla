@@ -15,7 +15,7 @@ const TOOL_INTENTS: Set<string> = new Set([
 
 const DIRECT_INTENTS: Set<string> = new Set([
   'time_query', 'battery_query', 'device_query',
-  'identity_query', 'limitations_query',
+  'identity_query', 'limitations_query', 'math_query',
 ]);
 
 export function isKnowledgeIntent(intent: string): boolean {
@@ -52,6 +52,7 @@ const VALID_INTENTS_SET: Set<string> = new Set([
   'reminder_create', 'reminder_list',
   'memory_query', 'memory_forget',
   'clipboard_read', 'clipboard_write', 'tts_speak',
+  'math_query',
   'knowledge_weather', 'knowledge_country', 'knowledge_book',
   'knowledge_paper', 'knowledge_dictionary', 'knowledge_currency',
   'knowledge_holiday', 'knowledge_general',

@@ -1,11 +1,12 @@
 import { getFactualGuardResponse } from './factual-guard';
 import { getIdentityResponse } from './identity-handler';
 import { handleTimeQuery, handleBatteryQuery, handleDeviceQuery } from './device-handlers';
+import { handleMathQuery } from './math-handler';
 import { formatModelResponse, formatStreamingToken } from './response-formatter';
 import { executeTool, registerBuiltinTools } from './tool-registry';
 import { buildSystemState, formatSystemStateForPrompt } from './system-state';
 import { extractFacts } from './fact-extractor';
-import { validateClassification, isKnowledgeIntent, isToolIntent, isDirectIntent } from './router-guardrails';
+import { validateClassification, isKnowledgeIntent, isToolIntent } from './router-guardrails';
 import { queryKnowledge, formatKnowledgeForBrain, type KnowledgeIntent } from '@/knowledge/hub';
 import { postProcessCitations } from '@/knowledge/formatter';
 import { type ClassificationResult, type Intent } from '@/engines/router';
@@ -50,7 +51,7 @@ export function createOrchestrator(config: OrchestratorConfig) {
 
       const t0 = Date.now();
 
-      // ── 1. CLASSIFY (Router model or fallback to chat) ──────────
+      // ── 1. CLASSIFY ──────────────────────────────────────────────
 
       let classification: ClassificationResult;
 
@@ -65,22 +66,27 @@ export function createOrchestrator(config: OrchestratorConfig) {
       const t1 = Date.now();
       console.log(`[Orchestrator] Intent: ${intent} | needs_brain: ${needs_brain} | classify: ${t1 - t0}ms`);
 
-      // ── 2. ROUTE: Direct handlers (no model needed) ────────────
+      // ── 2. DIRECT HANDLERS (no model) ────────────────────────────
 
       if (intent === 'time_query') return sysResponse(handleTimeQuery(userMessage), intent);
       if (intent === 'battery_query') return sysResponse(await handleBatteryQuery(), intent);
       if (intent === 'device_query') return sysResponse(handleDeviceQuery(), intent);
       if (intent === 'identity_query') return sysResponse(getIdentityResponse(intent)!, intent);
       if (intent === 'limitations_query') return sysResponse(getIdentityResponse('limitations')!, intent);
+      if (intent === 'math_query') return sysResponse(handleMathQuery(userMessage), intent);
 
-      // ── 3. ROUTE: Factual guard ────────────────────────────────
+      // ── 3. FACTUAL GUARD ─────────────────────────────────────────
 
       if (intent === 'factual_realtime') {
+        if (config.isModelReady()) {
+          return await handleBrain(userMessage, conversationHistory, onToken, config, t0,
+            'The user is asking about very recent or real-time information. You are an on-device AI without internet access. Be honest about this limitation, but share any relevant knowledge you have about the topic. Do not fabricate current data.');
+        }
         const online = useAppStore.getState().isOnline;
         return { response: getFactualGuardResponse(userMessage, online), handledBy: 'factual_guard', intent, wasStreamed: false };
       }
 
-      // ── 4. ROUTE: Knowledge Hub ────────────────────────────────
+      // ── 4. KNOWLEDGE HUB ─────────────────────────────────────────
 
       const knowledgeAllowed = options?.knowledgeActive ?? config.knowledgeEnabled();
 
@@ -88,17 +94,39 @@ export function createOrchestrator(config: OrchestratorConfig) {
         return await handleKnowledge(intent as KnowledgeIntent, userMessage, conversationHistory, onToken, needs_brain, config, t0);
       }
 
-      // ── 5. ROUTE: Tool calls ───────────────────────────────────
+      // ── 5. TOOL CALLS ────────────────────────────────────────────
 
       if (isToolIntent(intent)) {
         return await handleTool(intent, userMessage, conversationHistory, onToken, needs_brain, config, t0);
       }
 
-      // ── 6. ROUTE: Brain (complex reasoning) ────────────────────
+      // ── 6. BRAIN ─────────────────────────────────────────────────
 
       return await handleBrain(userMessage, conversationHistory, onToken, config, t0);
     },
   };
+}
+
+async function ensureBrainLoaded(config: OrchestratorConfig): Promise<boolean> {
+  if (config.isModelReady()) return true;
+  try {
+    console.log('[Orchestrator] Swapping to Brain...');
+    await config.swapToBrain();
+    return config.isModelReady();
+  } catch (e) {
+    console.warn('[Orchestrator] Swap to Brain failed:', e);
+    return false;
+  }
+}
+
+async function ensureRouterLoaded(config: OrchestratorConfig): Promise<void> {
+  if (config.isRouterReady()) return;
+  try {
+    console.log('[Orchestrator] Swapping back to Router...');
+    await config.swapToRouter();
+  } catch (e) {
+    console.warn('[Orchestrator] Swap to Router failed:', e);
+  }
 }
 
 async function handleKnowledge(
@@ -106,7 +134,7 @@ async function handleKnowledge(
   userMessage: string,
   conversationHistory: Array<{ role: string; content: string }>,
   onToken: ((token: string) => void) | undefined,
-  needsBrain: boolean,
+  _needsBrain: boolean,
   config: OrchestratorConfig,
   t0: number,
 ): Promise<OrchestratorResult> {
@@ -114,41 +142,40 @@ async function handleKnowledge(
     const knowledgeResponse = await queryKnowledge(intent, userMessage);
 
     if (knowledgeResponse.results.length === 0) {
-      if (config.isModelReady()) {
-        return await handleBrain(userMessage, conversationHistory, onToken, config, t0);
+      const brainReady = await ensureBrainLoaded(config);
+      if (brainReady) {
+        const result = await handleBrain(userMessage, conversationHistory, onToken, config, t0);
+        await ensureRouterLoaded(config);
+        return result;
       }
       return sysResponse("I couldn't find information on that. Try rephrasing your question.", intent);
     }
 
-    if (!needsBrain) {
+    const brainReady = await ensureBrainLoaded(config);
+
+    if (brainReady) {
       const formatted = formatKnowledgeForBrain(knowledgeResponse.results, userMessage);
-      const simpleResponse = knowledgeResponse.results
-        .map((r, i) => `${r.content}`)
-        .join('\n\n');
-      autoExtractFacts(userMessage, simpleResponse, config.llmExtractFacts);
-      return { response: simpleResponse, handledBy: 'knowledge', intent, wasStreamed: false };
+      const brainResponse = await runBrain(
+        formatted.text,
+        userMessage,
+        conversationHistory,
+        onToken,
+        config,
+      );
+
+      const finalResponse = postProcessCitations(brainResponse, formatted.sources);
+      autoExtractFacts(userMessage, finalResponse, config.llmExtractFacts);
+
+      await ensureRouterLoaded(config);
+
+      const t5 = Date.now();
+      console.log(`[Orchestrator] Knowledge+Brain total: ${t5 - t0}ms`);
+      return { response: finalResponse, handledBy: 'knowledge', intent, wasStreamed: true };
     }
 
-    if (!config.isModelReady()) {
-      const simpleResponse = knowledgeResponse.results.map(r => r.content).join('\n\n');
-      return { response: simpleResponse, handledBy: 'knowledge', intent, wasStreamed: false };
-    }
-
-    const formatted = formatKnowledgeForBrain(knowledgeResponse.results, userMessage);
-    const brainResponse = await runBrain(
-      formatted.text,
-      userMessage,
-      conversationHistory,
-      onToken,
-      config,
-    );
-
-    const finalResponse = postProcessCitations(brainResponse, formatted.sources);
-    autoExtractFacts(userMessage, finalResponse, config.llmExtractFacts);
-
-    const t5 = Date.now();
-    console.log(`[Orchestrator] Knowledge+Brain total: ${t5 - t0}ms`);
-    return { response: finalResponse, handledBy: 'knowledge', intent, wasStreamed: true };
+    const simpleResponse = knowledgeResponse.results.map(r => r.content).join('\n\n');
+    autoExtractFacts(userMessage, simpleResponse, config.llmExtractFacts);
+    return { response: simpleResponse, handledBy: 'knowledge', intent, wasStreamed: false };
   } catch (e) {
     console.warn('[Orchestrator] Knowledge failed, falling back to Brain:', e);
     return await handleBrain(userMessage, conversationHistory, onToken, config, t0);
@@ -185,12 +212,16 @@ async function handleTool(
       return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
     }
     const hasSummarize = /\b(summarize|summarise|explain|what does|what does this mean)\b/i.test(userMessage);
-    if (hasSummarize && config.isModelReady()) {
-      const brainResponse = await runBrain(
-        `I copied this text. Please summarize or explain it:\n\n${result.data}`,
-        userMessage, conversationHistory, onToken, config,
-      );
-      return { response: brainResponse, handledBy: 'model', intent, wasStreamed: true };
+    if (hasSummarize) {
+      const brainReady = await ensureBrainLoaded(config);
+      if (brainReady) {
+        const brainResponse = await runBrain(
+          `I copied this text. Please summarize or explain it:\n\n${result.data}`,
+          userMessage, conversationHistory, onToken, config,
+        );
+        await ensureRouterLoaded(config);
+        return { response: brainResponse, handledBy: 'model', intent, wasStreamed: true };
+      }
     }
     return { response: `Here's what's on your clipboard:\n\n${result.data}`, handledBy: 'tool', intent, wasStreamed: false };
   }
@@ -226,12 +257,16 @@ async function handleTool(
   if (intent === 'calendar_query') {
     const days = /\b(?:upcoming|next|this\s+week)\b/i.test(userMessage) ? 7 : 0;
     const result = await executeTool('calendar_query', { days });
-    if (needsBrain && config.isModelReady()) {
-      const brainResponse = await runBrain(
-        `Based on this calendar data: ${result.data}\n\nAnswer the user's question.`,
-        userMessage, conversationHistory, onToken, config,
-      );
-      return { response: brainResponse, handledBy: 'model', intent, wasStreamed: true };
+    if (needsBrain) {
+      const brainReady = await ensureBrainLoaded(config);
+      if (brainReady) {
+        const brainResponse = await runBrain(
+          `Based on this calendar data: ${result.data}\n\nAnswer the user's question.`,
+          userMessage, conversationHistory, onToken, config,
+        );
+        await ensureRouterLoaded(config);
+        return { response: brainResponse, handledBy: 'model', intent, wasStreamed: true };
+      }
     }
     return { response: result.data, handledBy: 'tool', intent, wasStreamed: false };
   }
@@ -284,14 +319,15 @@ async function handleBrain(
   onToken: ((token: string) => void) | undefined,
   config: OrchestratorConfig,
   t0: number,
+  overrideSystemNote?: string,
 ): Promise<OrchestratorResult> {
-  if (!config.isModelReady()) {
+  const brainReady = await ensureBrainLoaded(config);
+  if (!brainReady) {
     return sysResponse("I'm still loading up — give me a moment and try again!", 'chat');
   }
 
   let relevantMemories: Array<{ fact: string; category: string | null; entity: string | null }> = [];
   let totalMemoryCount = 0;
-  const t2 = Date.now();
 
   try {
     const { memoryEngine } = await import('@/engines/memory');
@@ -304,18 +340,22 @@ async function handleBrain(
     console.warn('[Orchestrator] Memory search skipped:', e);
   }
 
-  const t3 = Date.now();
   const systemState = await buildSystemState(relevantMemories, totalMemoryCount);
   const stateString = formatSystemStateForPrompt(systemState);
 
   const { SYSTEM_PROMPT } = await import('@/utils/system-prompt');
-  const systemPrompt = SYSTEM_PROMPT + '\n\n[SYSTEM STATE]\n' + stateString + '\n[/SYSTEM STATE]';
+  let systemPrompt = SYSTEM_PROMPT + '\n\n[SYSTEM STATE]\n' + stateString + '\n[/SYSTEM STATE]';
+  if (overrideSystemNote) {
+    systemPrompt += '\n\n[NOTE]\n' + overrideSystemNote + '\n[/NOTE]';
+  }
 
   const brainResponse = await runBrain(
     null, userMessage, conversationHistory, onToken, config, systemPrompt,
   );
 
   autoExtractFacts(userMessage, brainResponse, config.llmExtractFacts);
+
+  await ensureRouterLoaded(config);
 
   const t5 = Date.now();
   console.log(`[Orchestrator] Brain total: ${t5 - t0}ms`);
@@ -369,6 +409,8 @@ async function runBrain(
 type FactExtractorFn = (userMsg: string, assistantMsg: string) => Promise<Array<{ fact: string; category: string; entity: string | null }>>;
 
 function autoExtractFacts(userMessage: string, assistantResponse: string, llmExtractor?: FactExtractorFn): void {
+  if (!useSettingsStore_readOnly().memoryEnabled) return;
+
   try {
     const facts = extractFacts(userMessage);
     if (facts.length === 0 && llmExtractor) {
@@ -392,6 +434,11 @@ function autoExtractFacts(userMessage: string, assistantResponse: string, llmExt
       }
     }).catch(() => {});
   } catch {}
+}
+
+function useSettingsStore_readOnly() {
+  const { useSettingsStore } = require('@/stores/settings-store');
+  return useSettingsStore.getState();
 }
 
 function extractTimeFromMessage(message: string): Date | null {
